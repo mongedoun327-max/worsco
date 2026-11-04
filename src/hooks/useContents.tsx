@@ -193,22 +193,56 @@ export const useTrending = (period: "today" | "week" | "month" = "week", limit =
     queryFn: async () => {
       const days = period === "today" ? 1 : period === "week" ? 7 : 30;
       const since = new Date(Date.now() - days * 86400000).toISOString();
-      const { data, error } = await supabase
-        .from("contents")
-        .select(SELECT)
-        .eq("published", true)
-        .gte("created_at", since)
-        .order("views", { ascending: false })
-        .limit(limit);
-      if (error) throw error;
-      if ((data ?? []).length > 0) return data as unknown as Content[];
-      const { data: fallback } = await supabase
-        .from("contents")
-        .select(SELECT)
-        .eq("published", true)
-        .order("views", { ascending: false })
-        .limit(limit);
-      return (fallback ?? []) as unknown as Content[];
+      try {
+        const { data, error } = await supabase
+          .from("contents")
+          .select(SELECT)
+          .eq("published", true)
+          .gte("created_at", since)
+          .order("views", { ascending: false })
+          .limit(limit);
+        if (!error && (data ?? []).length > 0) return data as unknown as Content[];
+        const { data: fallback, error: err2 } = await supabase
+          .from("contents")
+          .select(SELECT)
+          .eq("published", true)
+          .order("views", { ascending: false })
+          .limit(limit);
+        if (!err2 && (fallback ?? []).length > 0) return (fallback ?? []) as unknown as Content[];
+      } catch {}
+
+      try {
+        const { MODERN_BOOKS } = await import("@/lib/modernBooks");
+        return MODERN_BOOKS.slice(0, limit).map((b) => ({
+          id: b.id,
+          type: "book" as ContentType,
+          title: b.title,
+          subtitle: b.subtitle,
+          description: b.description,
+          author: b.author,
+          tags: ["Bestseller", "Moderno", b.category],
+          category: b.category,
+          slug: b.id,
+          cover: b.cover_url,
+          rating: b.rating,
+          rating_count: b.rating_count,
+          formats: b.formats,
+          language: "pt",
+          year: b.year,
+          size: "Guia Completo & Capítulos",
+          views: b.downloads * 2,
+          read_time: b.read_time,
+          episode_count: b.chapters.length,
+          price_cents: b.price_cents,
+          currency: b.currency,
+          published: b.published,
+          featured: b.featured,
+          collection: "Bestsellers Modernos",
+          created_at: b.created_at,
+        }));
+      } catch {
+        return [];
+      }
     },
   });
 

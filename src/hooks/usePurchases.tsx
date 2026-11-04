@@ -19,13 +19,15 @@ export const useContentPurchases = () => {
     queryKey: ["content-purchases", user?.id],
     enabled: !!user,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("content_purchases")
-        .select("id,content_id,amount_cents,currency,status,created_at")
-        .eq("user_id", user!.id)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as ContentPurchase[];
+      try {
+        const { data, error } = await supabase
+          .from("content_purchases")
+          .select("id,content_id,amount_cents,currency,status,created_at")
+          .eq("user_id", user!.id)
+          .order("created_at", { ascending: false });
+        if (!error && data) return (data ?? []) as ContentPurchase[];
+      } catch {}
+      return [] as ContentPurchase[];
     },
   });
 };
@@ -37,15 +39,17 @@ export const useOwnsContent = (contentId?: string) => {
     queryKey: ["owns-content", user?.id, contentId],
     enabled: !!user && !!contentId,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("content_purchases")
-        .select("id")
-        .eq("user_id", user!.id)
-        .eq("content_id", contentId!)
-        .eq("status", "paid")
-        .maybeSingle();
-      if (error) throw error;
-      return !!data;
+      try {
+        const { data, error } = await supabase
+          .from("content_purchases")
+          .select("id")
+          .eq("user_id", user!.id)
+          .eq("content_id", contentId!)
+          .eq("status", "paid")
+          .maybeSingle();
+        if (!error && data) return !!data;
+      } catch {}
+      return false;
     },
   });
 };
@@ -57,13 +61,17 @@ export const useOwnedContents = () => {
     queryKey: ["owned-contents", user?.id],
     enabled: !!user,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("content_purchases")
-        .select(`content_id, contents!inner(${CONTENT_SELECT})`)
-        .eq("user_id", user!.id)
-        .eq("status", "paid");
-      if (error) throw error;
-      return ((data ?? []) as unknown as Array<{ contents: Content }>).map((r) => r.contents);
+      try {
+        const { data, error } = await supabase
+          .from("content_purchases")
+          .select(`content_id, contents!inner(${CONTENT_SELECT})`)
+          .eq("user_id", user!.id)
+          .eq("status", "paid");
+        if (!error && data) {
+          return ((data ?? []) as unknown as Array<{ contents: Content }>).map((r) => r.contents);
+        }
+      } catch {}
+      return [] as Content[];
     },
   });
 };

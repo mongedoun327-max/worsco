@@ -16,13 +16,17 @@ export const useSavedItems = () => {
     queryKey: ["saved", user?.id],
     enabled: !!user,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("user_saved")
-        .select(`content_id, created_at, contents!inner(${CONTENT_SELECT})`)
-        .eq("user_id", user!.id)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return ((data ?? []) as unknown as Array<{ contents: Content }>).map((r) => r.contents);
+      try {
+        const { data, error } = await supabase
+          .from("user_saved")
+          .select(`content_id, created_at, contents!inner(${CONTENT_SELECT})`)
+          .eq("user_id", user!.id)
+          .order("created_at", { ascending: false });
+        if (!error && data) {
+          return ((data ?? []) as unknown as Array<{ contents: Content }>).map((r) => r.contents);
+        }
+      } catch {}
+      return [] as Content[];
     },
   });
 
