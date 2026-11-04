@@ -41,14 +41,19 @@ const BookGridCard = ({ book, free }: { book: Content; free?: boolean }) => {
               <BookOpen className="h-3 w-3 shrink-0" />
               <span className="truncate">{book.author}</span>
             </div>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-1.5 items-center">
               <span className="text-[10px] uppercase tracking-wide px-2 py-0.5 bg-accent text-accent-foreground rounded-sm font-light">
                 {book.category}
               </span>
+              {book.episode_count && book.episode_count > 1 ? (
+                <span className="text-[10px] uppercase tracking-wide px-2 py-0.5 bg-primary/10 text-primary font-medium rounded-sm">
+                  {book.episode_count} Capítulos
+                </span>
+              ) : null}
               {book.id.startsWith("mod-") ? (
                 <span className="text-[10px] uppercase tracking-wide px-2 py-0.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-sm font-medium flex items-center gap-1">
                   <Sparkles className="h-2.5 w-2.5" />
-                  Mais Influente
+                  Bestseller
                 </span>
               ) : isFree ? (
                 <span className="text-[10px] uppercase tracking-wide px-2 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-sm font-medium flex items-center gap-1">

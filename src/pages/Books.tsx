@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import { useInView } from "react-intersection-observer";
-import { Search, Sparkles, BookOpen, X } from "lucide-react";
+import { Search, Sparkles, BookOpen, X, Bot } from "lucide-react";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import FreeBookHero from "@/components/books/FreeBookHero";
@@ -48,6 +48,8 @@ const Books = () => {
     if (category && category !== "all") {
       if (category === "Bestsellers Modernos") {
         list = list.filter((i) => i.id?.startsWith("mod-") || i.tags?.includes("Bestseller"));
+      } else if (category === "✨ Automação Contínua") {
+        list = list.filter((i) => i.id?.startsWith("auto-") || i.tags?.includes("Automático") || i.collection === "Automação Contínua");
       } else {
         list = list.filter((i) => i.category === category);
       }
@@ -68,7 +70,7 @@ const Books = () => {
 
   const categories = useMemo(() => {
     const fromData = all.map((i) => i.category).filter(Boolean);
-    return Array.from(new Set(["Bestsellers Modernos", ...BOOK_CATEGORIES, ...fromData]));
+    return Array.from(new Set(["✨ Automação Contínua", "Bestsellers Modernos", ...BOOK_CATEGORIES, ...fromData]));
   }, [all]);
 
   const { ref, inView } = useInView({ rootMargin: "600px 0px" });
@@ -104,10 +106,10 @@ const Books = () => {
               Biblioteca Digital Aberta
             </span>
             <h1 className="text-3xl sm:text-5xl font-light text-white tracking-tight max-w-2xl mx-auto">
-              Bestsellers Modernos & Clássicos
+              Grandes Obras, Filosofia & Ciência
             </h1>
             <p className="text-xs sm:text-sm text-white/80 font-light mt-3 max-w-xl mx-auto">
-              As obras mais influentes sobre hábitos, finanças, produtividade e literatura com leitura integral no seu navegador
+              Obras essenciais de Estoicismo, Filosofia, Psicologia, Educação, Hábitos e Desenvolvimento com leitura completa no seu navegador
             </p>
           </div>
         </div>
@@ -126,7 +128,7 @@ const Books = () => {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar por título ou autor (ex: Hábitos Atômicos, 1984, Pai Rico, Sapiens, Machado)..."
+                placeholder="Buscar por título ou autor (ex: Marco Aurélio, Kahneman, Paulo Freire, Hábitos Atômicos, Epicteto)..."
                 className="w-full pl-11 pr-10 py-3 rounded-full border border-border bg-card text-foreground text-sm shadow-soft focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
               />
               {search && (
@@ -147,6 +149,22 @@ const Books = () => {
               <span>
                 {combinedItems.length} {combinedItems.length === 1 ? "título encontrado" : "títulos disponíveis"}
               </span>
+            </div>
+
+            {/* Automation status banner */}
+            <div className="flex items-center justify-between p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 text-xs shadow-soft">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-foreground font-medium">Automação Ativa:</span>
+                <span className="text-muted-foreground hidden sm:inline">Novas obras completas chegam periodicamente ao site.</span>
+              </div>
+              <Link
+                to="/admin"
+                className="text-emerald-600 dark:text-emerald-400 hover:underline font-medium flex items-center gap-1 text-[11px]"
+              >
+                <Bot className="h-3.5 w-3.5" />
+                <span>Gerenciar Automação</span>
+              </Link>
             </div>
           </div>
 

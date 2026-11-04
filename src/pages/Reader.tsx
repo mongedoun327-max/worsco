@@ -13,6 +13,8 @@ import {
   Sparkles,
   Download,
   Share2,
+  Search,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useBook, useChapters } from "@/hooks/useCatalog";
@@ -87,6 +89,28 @@ const Reader = () => {
 
   const [showChaptersModal, setShowChaptersModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [modalChapterSearch, setModalChapterSearch] = useState("");
+  const [modalRange, setModalRange] = useState<number | "all">("all");
+
+  const filteredModalChapters = useMemo(() => {
+    const list = chapters.map((ch, originalIdx) => ({ ...ch, originalIdx }));
+    if (modalChapterSearch.trim()) {
+      const q = modalChapterSearch.toLowerCase().trim();
+      return list.filter(
+        (ch) =>
+          ch.title.toLowerCase().includes(q) ||
+          String(ch.position) === q
+      );
+    }
+    if (modalRange !== "all") {
+      const start = (modalRange - 1) * 15 + 1;
+      const end = modalRange * 15;
+      return list.filter((ch) => ch.position >= start && ch.position <= end);
+    }
+    return list;
+  }, [chapters, modalChapterSearch, modalRange]);
+
+  const totalModalRanges = Math.ceil(chapters.length / 15);
 
   // Restore saved chapter position or prioritize ?cap parameter
   useEffect(() => {
@@ -320,43 +344,133 @@ const Reader = () => {
 
       {/* Chapter Selection Modal */}
       {showChaptersModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
           <div
-            className={`w-full max-w-xl max-h-[80vh] flex flex-col rounded-2xl border shadow-2xl overflow-hidden ${currentTheme.card} ${currentTheme.border}`}
+            className={`w-full max-w-xl max-h-[85vh] flex flex-col rounded-2xl border shadow-2xl overflow-hidden ${currentTheme.card} ${currentTheme.border}`}
           >
             <div className={`p-4 border-b ${currentTheme.border} flex items-center justify-between`}>
               <div className="flex items-center gap-2">
                 <BookOpen className="h-5 w-5 text-emerald-500" />
-                <h3 className="font-semibold text-base">Índice da Obra ({chapters.length} partes)</h3>
+                <div>
+                  <h3 className="font-semibold text-base leading-tight">Índice da Obra</h3>
+                  <span className="text-[11px] opacity-70 font-light">
+                    {chapters.length} capítulos disponíveis
+                  </span>
+                </div>
               </div>
               <button
-                onClick={() => setShowChaptersModal(false)}
-                className="text-xs uppercase tracking-wider px-3 py-1 rounded-full border opacity-70 hover:opacity-100"
+                onClick={() => {
+                  setShowChaptersModal(false);
+                  setModalChapterSearch("");
+                }}
+                className="text-xs uppercase tracking-wider px-3 py-1.5 rounded-full border opacity-75 hover:opacity-100 transition-opacity"
               >
                 Fechar
               </button>
             </div>
 
-            <div className="overflow-y-auto p-4 space-y-1.5 divide-y divide-black/5">
-              {chapters.map((ch, idx) => (
+            {/* Fast Chapter Search */}
+            <div className={`p-3 border-b ${currentTheme.border} ${currentTheme.bg}`}>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 opacity-50" />
+                <input
+                  type="text"
+                  value={modalChapterSearch}
+                  onChange={(e) => {
+                    setModalChapterSearch(e.target.value);
+                    if (e.target.value) setModalRange("all");
+                  }}
+                  placeholder="Filtrar por nome ou número..."
+                  className={`w-full ${currentTheme.card} border ${currentTheme.border} rounded-lg pl-9 pr-9 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all`}
+                  autoFocus
+                />
+                {modalChapterSearch && (
+                  <button
+                    onClick={() => setModalChapterSearch("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 opacity-60 hover:opacity-100"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Quick Jump Range Switcher */}
+              {!modalChapterSearch && totalModalRanges > 1 && (
+                <div className="flex items-center gap-1.5 overflow-x-auto pt-2 pb-0.5 scrollbar-none">
+                  <span className="text-[10px] opacity-60 uppercase tracking-wider shrink-0 mr-1">
+                    Saltos:
+                  </span>
+                  <button
+                    onClick={() => setModalRange("all")}
+                    className={`px-2.5 py-1 text-[11px] rounded-md transition-colors shrink-0 ${
+                      modalRange === "all"
+                        ? "bg-emerald-600 text-white font-medium"
+                        : "opacity-70 hover:opacity-100 border border-transparent hover:border-black/10 dark:hover:border-white/10"
+                    }`}
+                  >
+                    Todos
+                  </button>
+                  {Array.from({ length: totalModalRanges }, (_, i) => {
+                    const blockNum = i + 1;
+                    const start = i * 15 + 1;
+                    const end = Math.min((i + 1) * 15, chapters.length);
+                    return (
+                      <button
+                        key={blockNum}
+                        onClick={() => setModalRange(blockNum)}
+                        className={`px-2 py-0.5 text-[11px] rounded-md transition-colors shrink-0 ${
+                          modalRange === blockNum
+                            ? "bg-emerald-600 text-white font-medium"
+                            : "opacity-70 hover:opacity-100 border border-transparent hover:border-black/10 dark:hover:border-white/10"
+                        }`}
+                      >
+                        {start}–{end}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="overflow-y-auto p-3 space-y-1 divide-y divide-black/5 dark:divide-white/5">
+              {filteredModalChapters.map((ch) => (
                 <button
-                  key={ch.id || idx}
+                  key={ch.id || ch.originalIdx}
                   onClick={() => {
-                    setIndex(idx);
+                    setIndex(ch.originalIdx);
                     setShowChaptersModal(false);
+                    setModalChapterSearch("");
                   }}
                   className={`w-full text-left p-3 rounded-xl text-sm flex items-center justify-between transition-all ${
-                    idx === index
+                    ch.originalIdx === index
                       ? "bg-emerald-600 text-white font-medium"
-                      : `hover:${currentTheme.bg} opacity-80 hover:opacity-100`
+                      : `hover:${currentTheme.bg} opacity-85 hover:opacity-100`
                   }`}
                 >
-                  <span className="truncate pr-4">
-                    {ch.position}. {ch.title}
+                  <span className="truncate pr-4 flex items-center gap-2">
+                    <span className="font-mono text-xs opacity-60 w-6 text-right shrink-0">
+                      {ch.position}.
+                    </span>
+                    <span className="truncate">
+                      {ch.title.replace(/^Cap[íi]tulo\s*\d+\s*:\s*/i, "")}
+                    </span>
                   </span>
-                  {idx === index && <Check className="h-4 w-4 shrink-0" />}
+                  {ch.originalIdx === index && <Check className="h-4 w-4 shrink-0 text-white" />}
                 </button>
               ))}
+              {filteredModalChapters.length === 0 && (
+                <div className="py-12 text-center">
+                  <p className="text-xs opacity-60 mb-2">
+                    Nenhum capítulo encontrado para "{modalChapterSearch}".
+                  </p>
+                  <button
+                    onClick={() => setModalChapterSearch("")}
+                    className="text-xs text-emerald-500 underline"
+                  >
+                    Limpar filtro
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

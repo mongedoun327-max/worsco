@@ -1,4 +1,7 @@
 export const BOOK_CATEGORIES = [
+  "Filosofia e Estoicismo",
+  "Psicologia e Mente",
+  "Educação e Aprendizado",
   "Finanças e Negócios",
   "Autoajuda e Motivacional",
   "Filosofia e Pensamento",

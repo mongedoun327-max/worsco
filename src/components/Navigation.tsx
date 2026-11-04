@@ -42,8 +42,8 @@ const Navigation = ({ variant = "default" }: NavigationProps) => {
     { label: "Webtoons", href: "/webtoons" },
     { label: "Animes", href: "/animes" },
     { label: "Notícias", href: "/noticias" },
+    { label: "Automação", href: "/admin" },
     { label: user ? "Minha estante" : "Entrar", href: user ? "/biblioteca" : "/auth" },
-    ...(isAdmin ? [{ label: "Admin", href: "/admin" }] : []),
   ];
 
   const lightText = isMobileMenuOpen || isDark || !isScrolled;

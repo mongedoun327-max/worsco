@@ -112,9 +112,42 @@ export const useBooks = (search = "") =>
         // Fallback gracefully
       }
 
+      // Fetch auto-imported books from automation pipeline
+      let autoBooks: Book[] = [];
+      try {
+        const { getAutoImportedBooks } = await import("@/lib/bookAutomation");
+        const list = await getAutoImportedBooks();
+        autoBooks = list
+          .filter((b) =>
+            search
+              ? b.title.toLowerCase().includes(search.toLowerCase()) ||
+                b.author.toLowerCase().includes(search.toLowerCase()) ||
+                b.description.toLowerCase().includes(search.toLowerCase())
+              : true
+          )
+          .map((b) => ({
+            id: b.id,
+            title: b.title,
+            author: b.author,
+            description: b.description,
+            cover_url: b.cover_url,
+            price_cents: b.price_cents,
+            currency: b.currency,
+            category: b.category,
+            published: b.published,
+            featured: b.featured,
+            created_at: b.created_at,
+          }));
+      } catch {
+        // Fallback gracefully
+      }
+
       const map = new Map<string, Book>();
-      // Modern bestsellers first, followed by classic literature, then db
-      for (const b of modernBooks) map.set(b.id, b);
+      // Auto-imported books first, then modern bestsellers, classic literature, then db
+      for (const b of autoBooks) map.set(b.id, b);
+      for (const b of modernBooks) {
+        if (!map.has(b.id)) map.set(b.id, b);
+      }
       for (const b of gutenBooks) {
         if (!map.has(b.id)) map.set(b.id, b);
       }
@@ -132,6 +165,30 @@ export const useBook = (id?: string) =>
     enabled: !!id,
     queryFn: async () => {
       if (!id) return null;
+
+      // Check if it is an Auto-Imported book
+      if (id.startsWith("auto-")) {
+        try {
+          const { getAutoImportedBooks } = await import("@/lib/bookAutomation");
+          const list = await getAutoImportedBooks();
+          const found = list.find((b) => b.id === id);
+          if (found) {
+            return {
+              id: found.id,
+              title: found.title,
+              author: found.author,
+              description: found.description,
+              cover_url: found.cover_url,
+              price_cents: found.price_cents,
+              currency: found.currency,
+              category: found.category,
+              published: found.published,
+              featured: found.featured,
+              created_at: found.created_at,
+            } as Book;
+          }
+        } catch {}
+      }
 
       // Check if it is a Modern Bestseller book
       if (id.startsWith("mod-")) {
@@ -231,6 +288,18 @@ export const useChapters = (bookId?: string) =>
     enabled: !!bookId,
     queryFn: async () => {
       if (!bookId) return [];
+
+      // Check Auto-Imported chapters
+      if (bookId.startsWith("auto-")) {
+        try {
+          const { getAutoImportedBooks } = await import("@/lib/bookAutomation");
+          const list = await getAutoImportedBooks();
+          const found = list.find((b) => b.id === bookId);
+          if (found && found.chapters) {
+            return found.chapters as Chapter[];
+          }
+        } catch {}
+      }
 
       // Check Modern Bestsellers chapters
       if (bookId.startsWith("mod-")) {

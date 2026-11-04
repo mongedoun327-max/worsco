@@ -111,7 +111,40 @@ export const useContents = (options?: { type?: ContentType; category?: string; l
         try {
           const { MODERN_BOOKS } = await import("@/lib/modernBooks");
           const { fetchGutenbergCatalog } = await import("@/lib/gutenbergBooks");
+          const { getAutoImportedBooks } = await import("@/lib/bookAutomation");
+
           const gutenList = await fetchGutenbergCatalog();
+          const autoList = await getAutoImportedBooks();
+
+          const autoMapped: Content[] = autoList
+            .filter((b) => (options?.category && options.category !== "all" ? b.category === options.category : true))
+            .map((b) => ({
+              id: b.id,
+              type: "book",
+              title: b.title,
+              subtitle: b.subtitle || "Automação Contínua · Leitura Integral",
+              description: b.description,
+              author: b.author,
+              tags: ["Automático", "Novo", b.category, "Obras Completas"],
+              category: b.category,
+              slug: b.id,
+              cover: b.cover_url,
+              rating: b.rating,
+              rating_count: b.rating_count,
+              formats: b.formats,
+              language: "pt",
+              year: b.year,
+              size: `${b.chapters.length} Capítulos Completos`,
+              views: b.downloads * 2,
+              read_time: b.read_time,
+              episode_count: b.chapters.length,
+              price_cents: b.price_cents,
+              currency: b.currency,
+              published: b.published,
+              featured: b.featured,
+              collection: "Automação Contínua",
+              created_at: b.created_at,
+            }));
 
           const modernMapped: Content[] = MODERN_BOOKS
             .filter((b) => (options?.category && options.category !== "all" ? b.category === options.category : true))
@@ -174,8 +207,8 @@ export const useContents = (options?: { type?: ContentType; category?: string; l
             }));
 
           const map = new Map<string, Content>();
-          // Modern blockbusters first, then classics, then db
-          for (const item of [...modernMapped, ...gutenMapped, ...dbData]) {
+          // Automated books first, then modern bestsellers, then classics, then db
+          for (const item of [...autoMapped, ...modernMapped, ...gutenMapped, ...dbData]) {
             if (!map.has(item.id)) map.set(item.id, item);
           }
           const combined = Array.from(map.values());
