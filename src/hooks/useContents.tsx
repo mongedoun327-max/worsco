@@ -46,6 +46,7 @@ export type Episode = {
   title: string;
   body: string;
   images: string[];
+  story_beats?: any[];
   is_free: boolean;
   published_at: string;
 };
@@ -216,6 +217,56 @@ export const useContents = (options?: { type?: ContentType; category?: string; l
         } catch {}
       }
 
+      // If requested type is "webtoon" or all, merge Curated Webtoons
+      if (!options?.type || options.type === "webtoon") {
+        try {
+          const { CURATED_WEBTOONS } = await import("@/lib/webtoons");
+          const webtoonMapped: Content[] = CURATED_WEBTOONS
+            .filter((w) =>
+              options?.category && options.category !== "all" && options.category !== "Todos"
+                ? w.genres.includes(options.category) || w.release_day === options.category
+                : true
+            )
+            .map((w) => ({
+              id: w.id,
+              type: "webtoon" as ContentType,
+              title: w.title,
+              subtitle: `${w.status} · ${w.release_day}`,
+              description: w.description,
+              author: `${w.author} / ${w.artist}`,
+              tags: [...w.genres, w.release_day, w.status],
+              category: w.genres[0] || "Ação",
+              slug: w.slug,
+              cover: w.cover,
+              rating: w.rating,
+              rating_count: w.rating_count,
+              formats: ["Tira Vertical", "Webtoon"],
+              language: "pt",
+              year: 2026,
+              size: `${w.episodes_count} Episódios`,
+              views: w.views,
+              read_time: 15,
+              episode_count: w.episodes_count,
+              price_cents: 0,
+              currency: "BRL",
+              published: true,
+              featured: !!w.featured,
+              collection: w.collection || "Webtoons em Destaque",
+              created_at: new Date().toISOString(),
+            }));
+
+          const map = new Map<string, Content>();
+          for (const item of [...webtoonMapped, ...dbData]) {
+            if (!map.has(item.id)) map.set(item.id, item);
+          }
+          const combined = Array.from(map.values());
+          if (options?.type === "webtoon") {
+            return options?.limit ? combined.slice(0, options.limit) : combined;
+          }
+          dbData = combined;
+        } catch {}
+      }
+
       return dbData;
     },
   });
@@ -361,6 +412,44 @@ export const useContent = (id?: string) =>
         }
       }
 
+      // Check Curated Webtoons
+      if (id.startsWith("wt-") || id.startsWith("solo-") || id.startsWith("omniscient-") || id.startsWith("tower-") || id.startsWith("nano-") || id.startsWith("lore-") || id.startsWith("eleceed-") || id.startsWith("wind-")) {
+        try {
+          const { getWebtoonById } = await import("@/lib/webtoons");
+          const found = getWebtoonById(id);
+          if (found) {
+            return {
+              id: found.id,
+              type: "webtoon" as ContentType,
+              title: found.title,
+              subtitle: `${found.status} · ${found.release_day}`,
+              description: found.description,
+              body: found.description,
+              author: `${found.author} / ${found.artist}`,
+              tags: [...found.genres, found.release_day, found.status],
+              category: found.genres[0] || "Ação",
+              slug: found.slug,
+              cover: found.cover,
+              rating: found.rating,
+              rating_count: found.rating_count,
+              formats: ["Tira Vertical", "Webtoon"],
+              language: "pt",
+              year: 2026,
+              size: `${found.episodes_count} Episódios`,
+              views: found.views,
+              read_time: 15,
+              episode_count: found.episodes_count,
+              price_cents: 0,
+              currency: "BRL",
+              published: true,
+              featured: !!found.featured,
+              collection: found.collection || "Webtoons em Destaque",
+              created_at: new Date().toISOString(),
+            } as Content;
+          }
+        } catch {}
+      }
+
       try {
         const { data, error } = await supabase
           .from("contents")
@@ -380,6 +469,26 @@ export const useEpisodes = (contentId?: string) =>
     enabled: !!contentId,
     queryFn: async () => {
       if (!contentId) return [];
+
+      // Check Curated Webtoon episodes
+      if (contentId.startsWith("wt-") || contentId.startsWith("solo-") || contentId.startsWith("omniscient-") || contentId.startsWith("tower-") || contentId.startsWith("nano-") || contentId.startsWith("lore-") || contentId.startsWith("eleceed-") || contentId.startsWith("wind-")) {
+        try {
+          const { getWebtoonById } = await import("@/lib/webtoons");
+          const found = getWebtoonById(contentId);
+          if (found && found.episodes) {
+            return found.episodes.map((ep) => ({
+              id: ep.id,
+              content_id: contentId,
+              number: ep.number,
+              title: ep.title,
+              body: ep.synopsis,
+              images: ep.panels,
+              is_free: ep.is_free,
+              published_at: ep.release_date,
+            })) as Episode[];
+          }
+        } catch {}
+      }
 
       if (contentId.startsWith("guten-") || /^\d+$/.test(contentId)) {
         const { fetchGutenbergChapters } = await import("@/lib/gutenbergBooks");

@@ -118,35 +118,64 @@ const WebtoonDetail = () => {
               </Button>
             )}
 
-            <span className="text-[11px] uppercase tracking-wider text-muted-foreground mb-4 block">Episódios</span>
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-[11px] uppercase tracking-wider text-muted-foreground block">
+                Lista de Episódios ({episodes.length})
+              </span>
+              <span className="text-xs text-emerald-500 font-medium">Leitura Vertical Contínua</span>
+            </div>
+
             <div className="space-y-3">
               {episodes.map((ep) => (
                 <div
                   key={ep.id}
-                  className="flex items-center justify-between border border-border rounded-md bg-card px-5 py-4"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-border hover:border-emerald-500/50 rounded-2xl bg-card p-4 transition-all shadow-soft group"
                 >
-                  <div>
-                    <p className="text-sm font-normal text-card-foreground tracking-tight">
-                      Ep. {ep.number} — {ep.title}
-                    </p>
-                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-light">
-                      {formatDate(ep.published_at)}
-                      {ep.is_free ? " · Grátis" : ""}
-                    </span>
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <img
+                      src={ep.images?.[0] || item.cover || "/placeholder.svg"}
+                      alt={ep.title}
+                      className="w-14 h-16 sm:w-16 sm:h-20 object-cover rounded-xl shadow-sm flex-shrink-0 border border-border group-hover:scale-105 transition-transform"
+                    />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-emerald-500">Ep. {ep.number}</span>
+                        {progress?.episode_id === ep.id && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium border border-emerald-500/20">
+                            Último Lido
+                          </span>
+                        )}
+                      </div>
+                      <h4 className="text-sm font-medium text-foreground tracking-tight truncate mt-0.5 group-hover:text-emerald-500 transition-colors">
+                        {ep.title}
+                      </h4>
+                      <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5 font-light">
+                        {ep.body || "Acompanhe este novo capítulo na íntegra."}
+                      </p>
+                      <span className="text-[10px] text-muted-foreground/70 font-light mt-1 block">
+                        {formatDate(ep.published_at)} · {ep.is_free ? "Leitura Livre" : "Premium"}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    {progress?.episode_id === ep.id && <Check className="h-3 w-3 text-primary" />}
-                    <Button asChild variant="ghost" size="sm" className="text-primary text-xs font-light">
+
+                  <div className="flex items-center justify-end gap-3 flex-shrink-0">
+                    <Button
+                      asChild
+                      size="sm"
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full text-xs px-5 shadow-soft"
+                    >
                       <Link to={`/webtoon/${item.id}/ep/${ep.id}`}>
-                        Ler
-                        <ArrowRight className="ml-1 h-3 w-3" />
+                        Ler Agora
+                        <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
                       </Link>
                     </Button>
                   </div>
                 </div>
               ))}
               {episodes.length === 0 && (
-                <p className="text-xs text-muted-foreground font-light">Episódios em breve.</p>
+                <p className="text-xs text-muted-foreground font-light py-8 text-center border border-dashed border-border rounded-xl">
+                  Episódios em breve.
+                </p>
               )}
             </div>
           </motion.div>

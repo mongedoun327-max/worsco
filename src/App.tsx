@@ -18,6 +18,7 @@ import ContentDetail from "./pages/ContentDetail";
 import ContentReader from "./pages/ContentReader";
 import WebtoonDetail from "./pages/WebtoonDetail";
 import Webtoons from "./pages/Webtoons";
+import WebtoonReader from "./pages/WebtoonReader";
 import Animes from "./pages/Animes";
 import AnimeDetail from "./pages/AnimeDetail";
 import AnimeMangaReader from "./pages/AnimeMangaReader";
@@ -58,7 +59,9 @@ const App = () => (
           <Route path="/leitura/:id" element={<ContentReader />} />
           <Route path="/webtoons" element={<Webtoons />} />
           <Route path="/webtoon/:id" element={<WebtoonDetail />} />
-          <Route path="/webtoon/:id/ep/:episodeId" element={<ContentReader />} />
+          <Route path="/webtoon/:id/ep/:episodeId" element={<WebtoonReader />} />
+          <Route path="/webtoon/:id/ler/:episodeId" element={<WebtoonReader />} />
+          <Route path="/webtoon/:id/ler" element={<WebtoonReader />} />
           <Route path="/animes" element={<Animes />} />
           <Route path="/animes/:id" element={<AnimeDetail />} />
           <Route path="/animes/:id/manga" element={<AnimeMangaReader />} />
