@@ -2,6 +2,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { NewsItem } from "./useCatalog";
 import { syncDailyNews, getCachedNews } from "@/lib/newsSyndication";
+import { queryNewsArchive } from "@/lib/newsArchiveEngine";
 
 const PAGE_SIZE = 16;
 
@@ -9,9 +10,11 @@ export interface NewsFilters {
   category?: string;
   q?: string;
   order?: "recent" | "oldest";
+  year?: string;
+  month?: string;
 }
 
-/** Infinite news feed combining real-time syndicated RSS and Supabase database articles */
+/** Infinite news feed combining real-time syndicated RSS, Supabase DB and Permanent Historical Archive */
 export const useNewsFeed = (filters: NewsFilters) =>
   useInfiniteQuery({
     queryKey: ["news-feed", filters],
@@ -25,7 +28,16 @@ export const useNewsFeed = (filters: NewsFilters) =>
         syndicated = getCachedNews();
       }
 
-      // 2. Fetch Supabase news
+      // 2. Fetch from Permanent Archive Engine (guarantees historical persistence)
+      let archiveItems: NewsItem[] = [];
+      try {
+        const res = await queryNewsArchive({ pageSize: 120 });
+        archiveItems = res.items as NewsItem[];
+      } catch {
+        // Fallback gracefully
+      }
+
+      // 3. Fetch Supabase news
       let dbNews: NewsItem[] = [];
       try {
         const { data, error } = await supabase
@@ -37,11 +49,11 @@ export const useNewsFeed = (filters: NewsFilters) =>
         // Fallback gracefully
       }
 
-      // 3. Merge & Deduplicate
+      // 4. Merge & Deduplicate
       const seen = new Set<string>();
       let all: NewsItem[] = [];
 
-      for (const item of [...syndicated, ...dbNews]) {
+      for (const item of [...syndicated, ...archiveItems, ...dbNews]) {
         const key = (item.slug || item.title || "").toLowerCase();
         if (!seen.has(key)) {
           seen.add(key);
@@ -66,7 +78,21 @@ export const useNewsFeed = (filters: NewsFilters) =>
         );
       }
 
-      // 6. Sort
+      // 6. Apply Historical Year & Month Filters
+      if (filters.year && filters.year !== "all") {
+        all = all.filter((i) => {
+          const d = new Date(i.published_at);
+          return !isNaN(d.getTime()) && String(d.getFullYear()) === filters.year;
+        });
+      }
+      if (filters.month && filters.month !== "all") {
+        all = all.filter((i) => {
+          const d = new Date(i.published_at);
+          return !isNaN(d.getTime()) && String(d.getMonth() + 1).padStart(2, "0") === filters.month;
+        });
+      }
+
+      // 7. Sort
       const ascending = filters.order === "oldest";
       all.sort((a, b) => {
         const diff = new Date(b.published_at).getTime() - new Date(a.published_at).getTime();

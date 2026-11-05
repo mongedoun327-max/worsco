@@ -352,23 +352,28 @@ export const useNews = () =>
         // Fallback if supabase connection is offline
       }
 
-      // Automatically sync and get live daily RSS news
+      // Automatically sync and get live daily RSS news and permanent archive
       let syndicated: any[] = [];
+      let archivedItems: any[] = [];
       try {
         const { syncDailyNews, getCachedNews } = await import("@/lib/newsSyndication");
         syndicated = await syncDailyNews();
         if (!syndicated || syndicated.length === 0) {
           syndicated = getCachedNews();
         }
-      } catch {
-        // Fallback gracefully
-      }
+      } catch {}
+
+      try {
+        const { queryNewsArchive } = await import("@/lib/newsArchiveEngine");
+        const archiveResult = await queryNewsArchive({ pageSize: 60 });
+        archivedItems = archiveResult.items || [];
+      } catch {}
 
       // Merge and deduplicate by slug or title
       const seen = new Set<string>();
       const combined: NewsItem[] = [];
 
-      for (const item of [...syndicated, ...dbNews]) {
+      for (const item of [...syndicated, ...archivedItems, ...dbNews]) {
         const key = (item.slug || item.title || "").toLowerCase();
         if (!seen.has(key)) {
           seen.add(key);
@@ -387,29 +392,48 @@ export const useArticle = (slug?: string) =>
     enabled: !!slug,
     queryFn: async () => {
       if (!slug) return null;
+      let rawFound: NewsItem | null = null;
+
+      // 1. Check permanent historical archive first (Guarantees zero 404 for historical links)
+      try {
+        const { fetchPermanentArticle } = await import("@/lib/newsArchiveEngine");
+        const permanentMatch = await fetchPermanentArticle(slug);
+        if (permanentMatch) return permanentMatch as NewsItem;
+      } catch {}
+
+      // 2. Check Supabase
       try {
         const { data, error } = await supabase.from("news").select("*").eq("slug", slug).maybeSingle();
-        if (!error && data) return data as NewsItem;
+        if (!error && data) rawFound = data as NewsItem;
       } catch {}
 
-      try {
-        const { getCachedNews, syncDailyNews } = await import("@/lib/newsSyndication");
-        let cached = getCachedNews();
-        let found = cached.find((it) => it.slug === slug || it.id === slug);
-        if (!found) {
-          cached = await syncDailyNews();
-          found = cached.find((it) => it.slug === slug || it.id === slug);
-        }
-        if (found) return found;
+      // 3. Check syndicated cache or live feed
+      if (!rawFound) {
+        try {
+          const { getCachedNews, syncDailyNews } = await import("@/lib/newsSyndication");
+          let cached = getCachedNews();
+          let found = cached.find((it) => it.slug === slug || it.id === slug);
+          if (!found) {
+            cached = await syncDailyNews();
+            found = cached.find((it) => it.slug === slug || it.id === slug);
+          }
+          if (found) rawFound = found;
 
-        // Direct fetch from /api/news/feed?topic=all&limit=150
-        const res = await fetch("/api/news/feed?topic=all&limit=150");
-        if (res.ok) {
-          const data = await res.json();
-          const match = (data.items || []).find((it: any) => it.slug === slug || it.id === slug);
-          if (match) return match as NewsItem;
-        }
-      } catch {}
+          if (!rawFound) {
+            const res = await fetch("/api/news/feed?topic=all&limit=150");
+            if (res.ok) {
+              const data = await res.json();
+              const match = (data.items || []).find((it: any) => it.slug === slug || it.id === slug);
+              if (match) rawFound = match as NewsItem;
+            }
+          }
+        } catch {}
+      }
+
+      if (rawFound) {
+        const { expandNewsToDeepReport } = await import("@/lib/newsExpander");
+        return expandNewsToDeepReport(rawFound) as unknown as NewsItem;
+      }
 
       return null;
     },

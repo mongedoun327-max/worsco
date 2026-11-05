@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { useSearchParams } from "react-router-dom";
 import { useInView } from "react-intersection-observer";
-import { Search, RefreshCw, Radio } from "lucide-react";
+import { Search, RefreshCw, Radio, Archive, Calendar, X } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import Navigation from "@/components/Navigation";
@@ -19,6 +19,22 @@ import { useNewsFeed } from "@/hooks/useNewsFeed";
 import { useContentProtection } from "@/hooks/useContentProtection";
 import { NEWS_CATEGORIES, pickFeatured, type CuratedNews } from "@/lib/news";
 import { syncDailyNews } from "@/lib/newsSyndication";
+import { fetchArchiveTimeline, type ArchiveTimelineEntry } from "@/lib/newsArchiveEngine";
+
+const MONTH_NAMES: Record<string, string> = {
+  "01": "Janeiro",
+  "02": "Fevereiro",
+  "03": "Março",
+  "04": "Abril",
+  "05": "Maio",
+  "06": "Junho",
+  "07": "Julho",
+  "08": "Agosto",
+  "09": "Setembro",
+  "10": "Outubro",
+  "11": "Novembro",
+  "12": "Dezembro",
+};
 
 const News = () => {
   const { scrollY } = useScroll();
@@ -26,10 +42,21 @@ const News = () => {
   const [params, setParams] = useSearchParams();
   const queryClient = useQueryClient();
   const [isSyncing, setIsSyncing] = useState(false);
+  const [timeline, setTimeline] = useState<ArchiveTimelineEntry[]>([]);
+  const [totalArchived, setTotalArchived] = useState<number>(0);
   useContentProtection();
+
+  useEffect(() => {
+    fetchArchiveTimeline().then((res) => {
+      setTimeline(res.timeline || []);
+      setTotalArchived(res.totalArticles || 0);
+    });
+  }, []);
 
   const category = params.get("categoria") ?? "all";
   const order = (params.get("ordem") as "recent" | "oldest") ?? "recent";
+  const year = params.get("ano") ?? "all";
+  const month = params.get("mes") ?? "all";
   const q = params.get("q") ?? "";
 
   const setParam = (key: string, value: string | undefined) => {
@@ -39,7 +66,7 @@ const News = () => {
     setParams(next, { replace: true });
   };
 
-  const feed = useNewsFeed({ category, order, q });
+  const feed = useNewsFeed({ category, order, q, year, month });
   const items = useMemo(
     () => (feed.data?.pages.flatMap((p) => p.items) ?? []) as CuratedNews[],
     [feed.data],
@@ -48,11 +75,24 @@ const News = () => {
   const { data: all = [] } = useNews();
   const published = useMemo(() => all.filter((n) => n.published) as CuratedNews[], [all]);
 
+  /** Available years in archive */
+  const availableYears = useMemo(() => {
+    const yrs = new Set<string>();
+    timeline.forEach((t) => yrs.add(String(t.year)));
+    published.forEach((p) => {
+      const d = new Date(p.published_at);
+      if (!isNaN(d.getFullYear())) yrs.add(String(d.getFullYear()));
+    });
+    if (yrs.size === 0) yrs.add("2026");
+    return Array.from(yrs).sort().reverse();
+  }, [timeline, published]);
+
   /** Curation: Top Story flag → engajamento do dia → mais recente. */
   const featured = useMemo(() => pickFeatured(published), [published]);
+  const isFilteringHistory = year !== "all" || month !== "all";
   const gridItems = useMemo(
-    () => items.filter((i) => !featured || i.id !== featured.id || category !== "all" || q),
-    [items, featured, category, q],
+    () => items.filter((i) => (!featured || i.id !== featured.id || category !== "all" || q) || isFilteringHistory),
+    [items, featured, category, q, isFilteringHistory],
   );
 
   const categories = useMemo(() => {
@@ -151,8 +191,8 @@ const News = () => {
                   <span>{isSyncing ? "Sincronizando..." : "Atualizar Notícias"}</span>
                 </button>
 
-                <Select value={order} onValueChange={(v) => setParam("ordem", v === "recent" ? undefined : v)}>
-                  <SelectTrigger className="w-[150px] text-xs font-light rounded-full">
+                  <Select value={order} onValueChange={(v) => setParam("ordem", v === "recent" ? undefined : v)}>
+                  <SelectTrigger className="w-[140px] text-xs font-light rounded-full">
                     <SelectValue placeholder="Ordenar" />
                   </SelectTrigger>
                   <SelectContent>
@@ -160,6 +200,71 @@ const News = () => {
                     <SelectItem value="oldest">Mais antigas</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+            </div>
+
+            {/* Banner de Arquivo Histórico Permanente & Filtros Cronológicos */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-card/70 border border-border/80 shadow-xs">
+              <div className="flex items-center gap-2.5 text-xs text-foreground/80">
+                <span className="p-1.5 rounded-lg bg-primary/10 text-primary">
+                  <Archive className="h-4 w-4" />
+                </span>
+                <div>
+                  <span className="font-semibold text-foreground">Arquivo Permanente Ativo:</span>{" "}
+                  <span className="text-muted-foreground">
+                    {totalArchived || published.length} matérias preservadas no histórico imutável (sem expiração ou links quebrados)
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-light mr-1">
+                  <Calendar className="h-3.5 w-3.5" />
+                  <span>Histórico:</span>
+                </div>
+
+                <Select value={year} onValueChange={(v) => setParam("ano", v === "all" ? undefined : v)}>
+                  <SelectTrigger className="w-[110px] h-8 text-xs font-light rounded-full bg-background">
+                    <SelectValue placeholder="Ano" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os anos</SelectItem>
+                    {availableYears.map((yr) => (
+                      <SelectItem key={yr} value={yr}>
+                        {yr}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={month} onValueChange={(v) => setParam("mes", v === "all" ? undefined : v)}>
+                  <SelectTrigger className="w-[130px] h-8 text-xs font-light rounded-full bg-background">
+                    <SelectValue placeholder="Mês" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os meses</SelectItem>
+                    {Object.entries(MONTH_NAMES).map(([val, label]) => (
+                      <SelectItem key={val} value={val}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {isFilteringHistory && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setParam("ano", undefined);
+                      setParam("mes", undefined);
+                    }}
+                    className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground px-2 py-1 rounded-full border border-border hover:bg-muted transition-all"
+                    title="Limpar filtro histórico"
+                  >
+                    <X className="h-3 w-3" />
+                    <span>Limpar</span>
+                  </button>
+                )}
               </div>
             </div>
 

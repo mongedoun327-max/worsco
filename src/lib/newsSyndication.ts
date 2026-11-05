@@ -1,22 +1,27 @@
 import type { NewsItem } from "@/hooks/useCatalog";
+import { expandNewsToDeepReport } from "./newsExpander";
 
 export interface SyndicatedNewsItem extends NewsItem {
   source_name?: string;
   source_url?: string;
   read_time?: number;
   is_syndicated?: boolean;
+  word_count?: number;
+  key_takeaways?: string[];
 }
 
-const STORAGE_KEY = "worscoi_syndicated_news_v3";
-const LAST_SYNC_KEY = "worscoi_news_last_sync_v3";
-const SYNC_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes cache TTL
+const STORAGE_KEY = "worscoi_syndicated_news_v7";
+const LAST_SYNC_KEY = "worscoi_news_last_sync_v7";
+const SYNC_INTERVAL_MS = 8 * 60 * 1000; // 8 minutes cache TTL
 
 /** Clear legacy versions from localStorage */
 const clearLegacyCache = () => {
   if (typeof window === "undefined") return;
   try {
-    localStorage.removeItem("worscoi_syndicated_news_v1");
-    localStorage.removeItem("worscoi_syndicated_news_v2");
+    for (let i = 1; i <= 6; i++) {
+      localStorage.removeItem(`worscoi_syndicated_news_v${i}`);
+      localStorage.removeItem(`worscoi_news_last_sync_v${i}`);
+    }
     localStorage.removeItem("worscoi_news_last_sync");
   } catch {}
 };
@@ -27,7 +32,18 @@ export const getCachedNews = (): SyndicatedNewsItem[] => {
   clearLegacyCache();
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      return parsed.map((item) => {
+        // Guarantee every item has deep report depth
+        if (!item.content || item.content.length < 1200 || !item.content.includes("### ")) {
+          return expandNewsToDeepReport(item);
+        }
+        return item;
+      });
+    }
+    return [];
   } catch {
     return [];
   }
@@ -37,7 +53,8 @@ export const getCachedNews = (): SyndicatedNewsItem[] => {
 export const setCachedNews = (items: SyndicatedNewsItem[]) => {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    const enriched = items.map((it) => expandNewsToDeepReport(it));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(enriched));
     localStorage.setItem(LAST_SYNC_KEY, Date.now().toString());
     window.dispatchEvent(new Event("worscoi_news_synced"));
   } catch {

@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { motion } from "framer-motion";
+import { useMemo, useState, useEffect } from "react";
+import { motion, useScroll, useSpring } from "framer-motion";
 import { Link, useParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -17,11 +17,20 @@ import { Button } from "@/components/ui/button";
 import { useArticle, useNews } from "@/hooks/useCatalog";
 import { formatDate } from "@/lib/format";
 import { toast } from "sonner";
+import { expandNewsToDeepReport, EnrichedNews } from "@/lib/newsExpander";
 
 const NewsArticle = () => {
   const { slug } = useParams();
-  const { data: article, isLoading } = useArticle(slug);
+  const { data: rawArticle, isLoading } = useArticle(slug);
   const { data: allNews = [] } = useNews();
+  const { scrollYProgress } = useScroll();
+  const scaleX = useSpring(scrollYProgress, { stiffness: 100, damping: 30, restDelta: 0.001 });
+
+  // Guarantee every article is upgraded to a multi-section deep investigative report
+  const article: EnrichedNews | null = useMemo(() => {
+    if (!rawArticle) return null;
+    return expandNewsToDeepReport(rawArticle);
+  }, [rawArticle]);
 
   // Find related news from same category or latest
   const relatedNews = useMemo(() => {
@@ -107,6 +116,8 @@ const NewsArticle = () => {
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
+      {/* Sticky Top Reading Progress Bar */}
+      <motion.div style={{ scaleX }} className="fixed top-0 left-0 right-0 h-1 bg-emerald-500 origin-left z-50 shadow-sm" />
       <Navigation />
 
       {/* Hero Banner with Authentic Cover */}
@@ -197,10 +208,15 @@ const NewsArticle = () => {
 
           {/* Lead / Subtitle */}
           {article.excerpt && (
-            <div className="mb-10 p-5 rounded-2xl bg-accent/40 border-l-4 border-emerald-500 text-foreground font-light text-base sm:text-lg leading-relaxed">
+            <div className="mb-8 p-5 sm:p-6 rounded-2xl bg-accent/40 border-l-4 border-emerald-500 text-foreground font-light text-base sm:text-lg leading-relaxed shadow-sm">
+              <span className="text-[10px] uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-semibold block mb-1.5">
+                Lead da Reportagem
+              </span>
               {article.excerpt}
             </div>
           )}
+
+
 
           {/* Rich Body Content */}
           <div className="space-y-6 text-base sm:text-lg text-foreground/90 font-light leading-relaxed">

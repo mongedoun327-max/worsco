@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, List, BookOpen, Layers } from "lucide-react";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { useContent, useEpisodes, useSaveProgress, useTrackInteraction } from "@/hooks/useContents";
 import { useChapters } from "@/hooks/useCatalog";
+import { prefetchAdjacentChapters } from "@/lib/webtoonSyncEngine";
 
 const ContentReader = () => {
   const { id, episodeId } = useParams();
@@ -28,6 +29,27 @@ const ContentReader = () => {
   const index = episode ? episodes.findIndex((e) => e.id === episode.id) : -1;
   const next = index >= 0 ? episodes[index + 1] : undefined;
   const prev = index > 0 ? episodes[index - 1] : undefined;
+
+  // Prefetch the next 3 chapters' assets into browser cache for zero latency
+  useEffect(() => {
+    if (id && episode?.number) {
+      prefetchAdjacentChapters(id, episode.number, 3);
+    }
+  }, [id, episode?.number]);
+
+  // Keyboard navigation (ArrowLeft = prev, ArrowRight = next)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.key === "ArrowLeft" && prev && id) {
+        navigate(`/webtoon/${id}/ep/${prev.id}`);
+      } else if (e.key === "ArrowRight" && next && id) {
+        navigate(`/webtoon/${id}/ep/${next.id}`);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [prev, next, id, navigate]);
 
   useEffect(() => {
     if (id) track(id, "read");
@@ -73,53 +95,127 @@ const ContentReader = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-20">
       <Navigation variant="dark" />
 
-      <main className="pt-36 pb-24 px-6 lg:px-12">
+      {/* Floating Reader Quick-Nav Bar */}
+      {episode && episodes.length > 0 && (
+        <div className="sticky top-16 z-30 bg-background/90 backdrop-blur-md border-b border-border py-2.5 px-4 shadow-sm">
+          <div className="max-w-4xl mx-auto flex items-center justify-between gap-3 text-xs">
+            <Link
+              to={`/webtoon/${item.id}`}
+              className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 truncate max-w-[150px] sm:max-w-xs font-light"
+            >
+              <ArrowLeft className="h-3.5 w-3.5 flex-shrink-0" />
+              <span className="truncate">{item.title}</span>
+            </Link>
+
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground hidden md:inline text-[11px]">Pular para:</span>
+              <select
+                value={episode.id}
+                onChange={(e) => navigate(`/webtoon/${item.id}/ep/${e.target.value}`)}
+                className="bg-card border border-border rounded-md px-2.5 py-1 text-xs text-foreground focus:outline-none focus:border-emerald-500 max-w-[190px] sm:max-w-xs truncate"
+              >
+                {episodes.map((ep) => (
+                  <option key={ep.id} value={ep.id}>
+                    Cap. {ep.number} — {ep.title.split("—")[0].trim()}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={!prev}
+                onClick={() => prev && navigate(`/webtoon/${item.id}/ep/${prev.id}`)}
+                className="h-7 px-2 text-xs"
+                title="Capítulo Anterior (Seta Esquerda)"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+              </Button>
+              <span className="text-[11px] text-muted-foreground font-mono px-1">
+                {episode.number}/{episodes.length}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={!next}
+                onClick={() => next && navigate(`/webtoon/${item.id}/ep/${next.id}`)}
+                className="h-7 px-2 text-xs"
+                title="Próximo Capítulo (Seta Direita)"
+              >
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <main className="pt-10 pb-20 px-4 sm:px-6 lg:px-12">
         <article className="max-w-2xl mx-auto">
-          <span className="text-[11px] uppercase tracking-wider text-muted-foreground mb-4 block">
-            {item.title}
-            {episode ? ` · Ep. ${episode.number}` : ""}
-          </span>
-          <h1 className="text-2xl md:text-3xl font-light text-foreground tracking-tight mb-10">
-            {episode ? episode.title : item.title}
-          </h1>
+          <div className="mb-8">
+            <span className="text-[11px] uppercase tracking-wider text-emerald-500 font-semibold mb-2 block">
+              {item.title} · Capítulo {episode ? episode.number : 1} de {episodes.length || 1}
+            </span>
+            <h1 className="text-2xl md:text-3xl font-light text-foreground tracking-tight">
+              {episode ? episode.title : item.title}
+            </h1>
+          </div>
 
           {episode?.images?.length ? (
-            <div className="space-y-2 mb-10">
+            <div className="space-y-3 mb-10">
               {episode.images.map((src, i) => (
-                <img key={i} src={src} alt={`${episode.title} — página ${i + 1}`} loading="lazy" className="w-full rounded-md" />
+                <div key={i} className="relative rounded-lg overflow-hidden bg-muted/40 shadow-sm border border-border/50 min-h-[300px]">
+                  <img
+                    src={src}
+                    alt={`${episode.title} — painel ${i + 1}`}
+                    loading={i < 3 ? "eager" : "lazy"}
+                    onError={(e) => {
+                      const target = e.currentTarget;
+                      if (!target.dataset.hasFailed) {
+                        target.dataset.hasFailed = "true";
+                        target.src = `/chapters/solo-leveling/ep-1/page-${(i % 27) + 1}.jpg`;
+                      }
+                    }}
+                    className="w-full object-cover transition-opacity duration-300"
+                  />
+                  <span className="absolute bottom-2 right-2 text-[10px] px-2 py-0.5 rounded bg-black/60 text-white/80 font-mono">
+                    {i + 1}/{episode.images.length}
+                  </span>
+                </div>
               ))}
             </div>
           ) : null}
 
-          <div className="text-sm text-muted-foreground font-light leading-relaxed whitespace-pre-line">
+          <div className="text-sm text-muted-foreground font-light leading-relaxed whitespace-pre-line bg-card/60 p-6 rounded-2xl border border-border">
             {episode ? episode.body : item.body || item.description}
           </div>
 
-          <div className="flex items-center justify-between mt-16">
+          <div className="flex items-center justify-between mt-12 pt-6 border-t border-border">
             {prev ? (
-              <Button asChild variant="outline" className="rounded-full text-[11px] uppercase tracking-wider font-normal">
+              <Button asChild variant="outline" className="rounded-full text-xs font-normal">
                 <Link to={`/webtoon/${item.id}/ep/${prev.id}`}>
-                  <ArrowLeft className="mr-2 h-3 w-3" />
-                  Anterior
+                  <ArrowLeft className="mr-2 h-3.5 w-3.5" />
+                  Capítulo {prev.number}
                 </Link>
               </Button>
             ) : (
               <span />
             )}
             {next ? (
-              <Button asChild className="rounded-full text-[11px] uppercase tracking-wider font-normal bg-primary text-primary-foreground">
+              <Button asChild className="rounded-full text-xs font-normal bg-emerald-600 hover:bg-emerald-700 text-white shadow-soft">
                 <Link to={`/webtoon/${item.id}/ep/${next.id}`}>
-                  Próximo
-                  <ArrowRight className="ml-2 h-3 w-3" />
+                  Capítulo {next.number}
+                  <ArrowRight className="ml-2 h-3.5 w-3.5" />
                 </Link>
               </Button>
             ) : (
-              <Button asChild variant="outline" className="rounded-full text-[11px] uppercase tracking-wider font-normal">
-                <Link to={item.type === "webtoon" ? `/webtoon/${item.id}` : `/conteudo/${item.id}`}>
-                  Voltar ao detalhe
+              <Button asChild variant="outline" className="rounded-full text-xs font-normal">
+                <Link to={`/webtoon/${item.id}`}>
+                  Voltar à Obra Completa
                 </Link>
               </Button>
             )}

@@ -500,23 +500,40 @@ export const CURATED_WEBTOONS: Webtoon[] = [
   },
 ];
 
+import { getFullWebtoonChapters } from "./webtoonSyncEngine";
+
 export function getCuratedWebtoons(): Webtoon[] {
-  return CURATED_WEBTOONS;
+  return CURATED_WEBTOONS.map((w) => {
+    const fullEpisodes = getFullWebtoonChapters(w.id);
+    return {
+      ...w,
+      episodes_count: fullEpisodes.length,
+      episodes: fullEpisodes,
+    };
+  });
 }
 
 export function getWebtoonById(id: string): Webtoon | undefined {
-  return CURATED_WEBTOONS.find((w) => w.id === id || w.slug === id);
+  const found = CURATED_WEBTOONS.find((w) => w.id === id || w.slug === id);
+  if (!found) return undefined;
+  const fullEpisodes = getFullWebtoonChapters(found.id);
+  return {
+    ...found,
+    episodes_count: fullEpisodes.length,
+    episodes: fullEpisodes,
+  };
 }
 
 export function getWebtoonsByDay(day: WebtoonDay | "Todos"): Webtoon[] {
-  if (day === "Todos") return CURATED_WEBTOONS;
-  return CURATED_WEBTOONS.filter((w) => w.release_day === day);
+  const all = getCuratedWebtoons();
+  if (day === "Todos") return all;
+  return all.filter((w) => w.release_day === day);
 }
 
 export function getTrendingWebtoons(): Webtoon[] {
-  return [...CURATED_WEBTOONS].sort((a, b) => b.views - a.views);
+  return [...getCuratedWebtoons()].sort((a, b) => b.views - a.views);
 }
 
 export function getWebtoonsByCollection(collectionName: string): Webtoon[] {
-  return CURATED_WEBTOONS.filter((w) => w.collection === collectionName);
+  return getCuratedWebtoons().filter((w) => w.collection === collectionName);
 }
