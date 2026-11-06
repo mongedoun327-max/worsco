@@ -18,6 +18,8 @@ import { useArticle, useNews } from "@/hooks/useCatalog";
 import { formatDate } from "@/lib/format";
 import { toast } from "sonner";
 import { expandNewsToDeepReport, EnrichedNews } from "@/lib/newsExpander";
+import { CATEGORY_METADATA } from "@/lib/news";
+import { getSmartNewsCover } from "@/lib/newsImageResolver";
 
 const NewsArticle = () => {
   const { slug } = useParams();
@@ -123,8 +125,14 @@ const NewsArticle = () => {
       {/* Hero Banner with Authentic Cover */}
       <div className="relative w-full h-[55vh] md:h-[65vh] overflow-hidden bg-zinc-950">
         <img
-          src={article.cover_url || "/placeholder.svg"}
+          src={getSmartNewsCover(article.title, article.category, article.cover_url)}
           alt={article.title}
+          onError={(e) => {
+            const fallback = getSmartNewsCover(article.title, article.category);
+            if (e.currentTarget.src !== fallback) {
+              e.currentTarget.src = fallback;
+            }
+          }}
           className="absolute inset-0 w-full h-full object-cover object-center scale-105"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-black/50 to-black/30" />
@@ -313,8 +321,14 @@ const NewsArticle = () => {
                     >
                       <div className="aspect-[16/10] overflow-hidden bg-accent relative">
                         <img
-                          src={rel.cover_url || "/placeholder.svg"}
+                          src={getSmartNewsCover(rel.title, rel.category, rel.cover_url)}
                           alt={rel.title}
+                          onError={(e) => {
+                            const fallback = getSmartNewsCover(rel.title, rel.category);
+                            if (e.currentTarget.src !== fallback) {
+                              e.currentTarget.src = fallback;
+                            }
+                          }}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         />
                         <span className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/60 backdrop-blur text-white text-[9px] uppercase tracking-wider font-semibold">

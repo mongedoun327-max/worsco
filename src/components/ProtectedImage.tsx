@@ -1,14 +1,15 @@
 import { useState } from "react";
+import { getSmartNewsCover, isValidCoverUrl } from "@/lib/newsImageResolver";
 
 interface ProtectedImageProps {
   src?: string | null;
   alt: string;
   className?: string;
+  category?: string;
+  fallbackSrc?: string;
   /** Marks the image as LCP candidate (disables lazy loading). */
   priority?: boolean;
 }
-
-const FALLBACK = "/placeholder.svg";
 
 /** Only local assets get a .webp sibling — remote URLs are used as-is. */
 const webpFor = (src: string) =>
@@ -17,14 +18,22 @@ const webpFor = (src: string) =>
 /**
  * Image with WebP preference, lazy decoding, broken-image fallback and
  * light anti-scraping protection (no drag, no selection, no context menu).
+ * If the original image is missing or fails to load, gracefully falls back to
+ * a topic-appropriate, high-resolution thematic cover.
  */
-const ProtectedImage = ({ src, alt, className, priority }: ProtectedImageProps) => {
+const ProtectedImage = ({ src, alt, className, category, fallbackSrc, priority }: ProtectedImageProps) => {
   const [failed, setFailed] = useState(false);
-  const source = !failed && src ? src : FALLBACK;
-  const webp = failed ? null : webpFor(source);
+
+  // If initial src is invalid or failed, use smart cover resolver
+  const source =
+    !failed && isValidCoverUrl(src)
+      ? (src as string)
+      : getSmartNewsCover(alt, category, fallbackSrc);
+
+  const webp = webpFor(source);
 
   return (
-    <picture onContextMenu={(e) => e.preventDefault()}>
+    <picture onContextMenu={(e) => e.preventDefault()} className="block w-full h-full">
       {webp && <source srcSet={webp} type="image/webp" />}
       <img
         src={source}
@@ -34,10 +43,12 @@ const ProtectedImage = ({ src, alt, className, priority }: ProtectedImageProps) 
         draggable={false}
         onDragStart={(e) => e.preventDefault()}
         onContextMenu={(e) => e.preventDefault()}
-        onError={() => setFailed(true)}
-        className={`select-none [-webkit-user-drag:none] ${className ?? ""} ${
-          failed ? "object-contain p-8 opacity-40" : ""
-        }`}
+        onError={() => {
+          if (!failed) {
+            setFailed(true);
+          }
+        }}
+        className={`select-none [-webkit-user-drag:none] ${className ?? ""}`}
       />
     </picture>
   );

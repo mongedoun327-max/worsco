@@ -1,4 +1,6 @@
 import initialAutoData from "@/data/autoBooks.json";
+import { SCIENTIFIC_ARTICLES } from "@/data/scientificArticles";
+import { CURRICULAR_BOOKS } from "@/data/curricularBooks";
 
 export interface AutomatedChapter {
   id: string;
@@ -39,6 +41,7 @@ export interface QueueItem {
   author: string;
   category: string;
   priority: "alta" | "media" | "baixa";
+  type?: "scientific_paper" | "curricular_book" | "general_book";
 }
 
 export interface AutomationLog {

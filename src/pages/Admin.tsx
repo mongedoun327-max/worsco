@@ -14,8 +14,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useBooks, useNews, usePurchases } from "@/hooks/useCatalog";
 import { formatPrice, slugify } from "@/lib/format";
-import { Bot } from "lucide-react";
-import { BookAutomationPanel } from "@/components/admin/BookAutomationPanel";
 
 const emptyBook = {
   title: "",
@@ -164,21 +162,13 @@ const Admin = () => {
           </div>
         )}
 
-        <Tabs defaultValue="automation" className="mt-8">
+        <Tabs defaultValue="books" className="mt-8">
           <TabsList className="flex flex-wrap h-auto gap-1">
-            <TabsTrigger value="automation" className="flex items-center gap-1.5">
-              <Bot className="h-4 w-4 text-emerald-500" />
-              <span>Automação de Livros</span>
-            </TabsTrigger>
-            <TabsTrigger value="books">Livros Manuais</TabsTrigger>
+            <TabsTrigger value="books">Livros</TabsTrigger>
             <TabsTrigger value="chapters">Capítulos</TabsTrigger>
             <TabsTrigger value="news">Notícias</TabsTrigger>
             <TabsTrigger value="orders">Pedidos</TabsTrigger>
           </TabsList>
-
-          <TabsContent value="automation" className="mt-6">
-            <BookAutomationPanel onBooksUpdated={() => refresh(["books", "chapters"])} />
-          </TabsContent>
 
           <TabsContent value="books" className="mt-6 space-y-8">
             <div className="grid gap-4 rounded-sm border border-border bg-card p-6 md:grid-cols-2">

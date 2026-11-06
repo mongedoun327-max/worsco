@@ -63,6 +63,59 @@ export const useBooks = (search = "") =>
         // Fallback gracefully
       }
 
+      // Fetch Scientific Articles
+      let sciBooks: Book[] = [];
+      try {
+        const { SCIENTIFIC_ARTICLES } = await import("@/data/scientificArticles");
+        sciBooks = SCIENTIFIC_ARTICLES.filter((s) =>
+          search
+            ? s.title.toLowerCase().includes(search.toLowerCase()) ||
+              s.author.toLowerCase().includes(search.toLowerCase()) ||
+              s.field.toLowerCase().includes(search.toLowerCase()) ||
+              s.description.toLowerCase().includes(search.toLowerCase())
+            : true
+        ).map((s) => ({
+          id: s.id,
+          title: s.title,
+          author: s.author,
+          description: s.description,
+          cover_url: s.cover_url,
+          price_cents: 0,
+          currency: "BRL",
+          category: `Artigo Científico (${s.field})`,
+          published: true,
+          featured: true,
+          created_at: s.published_at,
+        }));
+      } catch {}
+
+      // Fetch Curricular Textbooks
+      let currBooks: Book[] = [];
+      try {
+        const { CURRICULAR_BOOKS } = await import("@/data/curricularBooks");
+        currBooks = CURRICULAR_BOOKS.filter((c) =>
+          search
+            ? c.title.toLowerCase().includes(search.toLowerCase()) ||
+              c.author.toLowerCase().includes(search.toLowerCase()) ||
+              c.discipline.toLowerCase().includes(search.toLowerCase()) ||
+              c.grade_level.toLowerCase().includes(search.toLowerCase()) ||
+              c.description.toLowerCase().includes(search.toLowerCase())
+            : true
+        ).map((c) => ({
+          id: c.id,
+          title: c.title,
+          author: c.author,
+          description: c.description,
+          cover_url: c.cover_url,
+          price_cents: 0,
+          currency: "BRL",
+          category: `Disciplina (${c.discipline})`,
+          published: true,
+          featured: true,
+          created_at: new Date(c.year, 0, 1).toISOString(),
+        }));
+      } catch {}
+
       // Fetch modern bestsellers
       let modernBooks: Book[] = [];
       try {
@@ -143,8 +196,12 @@ export const useBooks = (search = "") =>
       }
 
       const map = new Map<string, Book>();
-      // Auto-imported books first, then modern bestsellers, classic literature, then db
-      for (const b of autoBooks) map.set(b.id, b);
+      // Scientific Articles & Curricular Textbooks first, then Auto, Modern, Gutenberg, DB
+      for (const b of sciBooks) map.set(b.id, b);
+      for (const b of currBooks) map.set(b.id, b);
+      for (const b of autoBooks) {
+        if (!map.has(b.id)) map.set(b.id, b);
+      }
       for (const b of modernBooks) {
         if (!map.has(b.id)) map.set(b.id, b);
       }
@@ -165,6 +222,52 @@ export const useBook = (id?: string) =>
     enabled: !!id,
     queryFn: async () => {
       if (!id) return null;
+
+      // Check if it is a Scientific Article
+      if (id.startsWith("sci-")) {
+        try {
+          const { SCIENTIFIC_ARTICLES } = await import("@/data/scientificArticles");
+          const found = SCIENTIFIC_ARTICLES.find((s) => s.id === id);
+          if (found) {
+            return {
+              id: found.id,
+              title: found.title,
+              author: found.author,
+              description: found.description,
+              cover_url: found.cover_url,
+              price_cents: 0,
+              currency: "BRL",
+              category: `Artigo Científico (${found.field})`,
+              published: true,
+              featured: true,
+              created_at: found.published_at,
+            } as Book;
+          }
+        } catch {}
+      }
+
+      // Check if it is a Curricular Textbook
+      if (id.startsWith("curr-")) {
+        try {
+          const { CURRICULAR_BOOKS } = await import("@/data/curricularBooks");
+          const found = CURRICULAR_BOOKS.find((c) => c.id === id);
+          if (found) {
+            return {
+              id: found.id,
+              title: found.title,
+              author: found.author,
+              description: found.description,
+              cover_url: found.cover_url,
+              price_cents: 0,
+              currency: "BRL",
+              category: `Disciplina (${found.discipline})`,
+              published: true,
+              featured: true,
+              created_at: new Date(found.year, 0, 1).toISOString(),
+            } as Book;
+          }
+        } catch {}
+      }
 
       // Check if it is an Auto-Imported book
       if (id.startsWith("auto-")) {
@@ -288,6 +391,28 @@ export const useChapters = (bookId?: string) =>
     enabled: !!bookId,
     queryFn: async () => {
       if (!bookId) return [];
+
+      // Check Scientific Articles chapters
+      if (bookId.startsWith("sci-")) {
+        try {
+          const { SCIENTIFIC_ARTICLES } = await import("@/data/scientificArticles");
+          const found = SCIENTIFIC_ARTICLES.find((s) => s.id === bookId);
+          if (found && found.chapters) {
+            return found.chapters as Chapter[];
+          }
+        } catch {}
+      }
+
+      // Check Curricular Textbooks chapters
+      if (bookId.startsWith("curr-")) {
+        try {
+          const { CURRICULAR_BOOKS } = await import("@/data/curricularBooks");
+          const found = CURRICULAR_BOOKS.find((c) => c.id === bookId);
+          if (found && found.chapters) {
+            return found.chapters as Chapter[];
+          }
+        } catch {}
+      }
 
       // Check Auto-Imported chapters
       if (bookId.startsWith("auto-")) {

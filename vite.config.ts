@@ -21,6 +21,11 @@ function newsRssPlugin(): Plugin {
 
   const PRIMARY_FEEDS: Record<string, FeedSource[]> = {
     all: [
+      { url: 'https://g1.globo.com/rss/g1/economia/', category: 'Mercado', source: 'G1 Economia' },
+      { url: 'https://g1.globo.com/rss/g1/politica/', category: 'Política', source: 'G1 Política' },
+      { url: 'https://g1.globo.com/rss/g1/ciencia-e-saude/', category: 'Ciência', source: 'G1 Ciência' },
+      { url: 'https://g1.globo.com/rss/g1/natureza/', category: 'Geografia', source: 'G1 Natureza & Clima' },
+      { url: 'https://ge.globo.com/rss/ge/', category: 'Futebol', source: 'Globo Esporte' },
       { url: 'https://www.jbox.com.br/feed/', category: 'Animes', source: 'JBox' },
       { url: 'https://www.otakupt.com/feed/', category: 'Animes', source: 'OtakuPT' },
       { url: 'https://anmtv.com.br/feed/', category: 'Animes', source: 'AnMTV' },
@@ -31,6 +36,31 @@ function newsRssPlugin(): Plugin {
       { url: 'https://www.adrenaline.com.br/rss/', category: 'Games', source: 'Adrenaline' },
       { url: 'https://rss.tecmundo.com.br/feed', category: 'Tecnologias', source: 'TecMundo' },
       { url: 'https://www.publishnews.com.br/rss/', category: 'Livros', source: 'PublishNews' },
+    ],
+    futebol: [
+      { url: 'https://ge.globo.com/rss/ge/', category: 'Futebol', source: 'Globo Esporte' },
+    ],
+    mercado: [
+      { url: 'https://g1.globo.com/rss/g1/economia/', category: 'Mercado', source: 'G1 Economia' },
+      { url: 'https://www.infomoney.com.br/feed/', category: 'Mercado', source: 'InfoMoney' },
+    ],
+    virais: [
+      { url: 'https://tecnoblog.net/feed/', category: 'Virais', source: 'Tecnoblog Internet' },
+      { url: 'https://g1.globo.com/rss/g1/pop-arte/', category: 'Virais', source: 'G1 Pop & Trends' },
+    ],
+    listas: [
+      { url: 'https://legiaodosherois.com.br/feed', category: 'Listas', source: 'Legião Rankings' },
+      { url: 'https://criticalhits.com.br/feed/', category: 'Listas', source: 'Critical Hits Top 10' },
+    ],
+    politica: [
+      { url: 'https://g1.globo.com/rss/g1/politica/', category: 'Política', source: 'G1 Política' },
+    ],
+    geografia: [
+      { url: 'https://g1.globo.com/rss/g1/natureza/', category: 'Geografia', source: 'G1 Natureza & Clima' },
+    ],
+    ciencia: [
+      { url: 'https://g1.globo.com/rss/g1/ciencia-e-saude/', category: 'Ciência', source: 'G1 Ciência & Saúde' },
+      { url: 'https://tecnoblog.net/feed/', category: 'Ciência', source: 'Tecnoblog Ciência' },
     ],
     animes: [
       { url: 'https://www.jbox.com.br/feed/', category: 'Animes', source: 'JBox' },
@@ -65,72 +95,208 @@ function newsRssPlugin(): Plugin {
     livros: [
       { url: 'https://www.publishnews.com.br/rss/', category: 'Livros', source: 'PublishNews' },
     ],
-    futebol: [
-      { url: 'https://ge.globo.com/rss/ge/', category: 'Futebol', source: 'Globo Esporte' },
-    ],
   };
 
   function extractRealImage(item: any, title: string, cat: string): string {
     // 1. Check enclosure attribute
     if (
       item.enclosure?.url &&
-      (item.enclosure.type?.includes('image') || /\.(jpg|jpeg|png|webp|avif)/i.test(item.enclosure.url))
+      (item.enclosure.type?.includes('image') || /\.(jpg|jpeg|png|webp|avif)/i.test(item.enclosure.url)) &&
+      !/(1x1|spacer|tracking|pixel|feedburner|emoji|\.gif)/i.test(item.enclosure.url)
     ) {
       return item.enclosure.url;
     }
     // 2. Check media:content or media:thumbnail
-    if (item['media:content']?.url) return item['media:content'].url;
-    if (item['media:thumbnail']?.url) return item['media:thumbnail'].url;
+    if (item['media:content']?.url && !/(1x1|spacer|tracking|pixel|\.gif)/i.test(item['media:content'].url)) {
+      return item['media:content'].url;
+    }
+    if (item['media:thumbnail']?.url && !/(1x1|spacer|tracking|pixel|\.gif)/i.test(item['media:thumbnail'].url)) {
+      return item['media:thumbnail'].url;
+    }
 
     // 3. Search HTML for first genuine <img> tag
     const rawHtml = (item['content:encoded'] || '') + ' ' + (item.content || '') + ' ' + (item.description || '');
     const matches = rawHtml.matchAll(/<img[^>]+src=["'](https?:\/\/[^"'\s>]+)["']/gi);
     for (const m of matches) {
       const url = m[1];
-      if (!/gravatar\.com|emoji|icon|pixel|feedburner|spacer|tracking/i.test(url)) {
+      if (!/gravatar\.com|emoji|icon|pixel|feedburner|spacer|tracking|1x1|\.gif/i.test(url)) {
         return url;
       }
     }
 
-    // 4. Accurate contextual match based on title keywords
-    const lower = title.toLowerCase();
-    if (/naruto|boruto/i.test(lower))
-      return 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=1200&auto=format&fit=crop&q=80';
-    if (/one piece|luffy/i.test(lower))
-      return 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=1200&auto=format&fit=crop&q=80';
-    if (/dragon ball|goku|vegeta/i.test(lower))
-      return 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=1200&auto=format&fit=crop&q=80';
-    if (/demon slayer|kimetsu/i.test(lower))
-      return 'https://images.unsplash.com/photo-1563089145-599997674d42?w=1200&auto=format&fit=crop&q=80';
-    if (/zelda|nintendo|mario|switch/i.test(lower))
-      return 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=1200&auto=format&fit=crop&q=80';
-    if (/playstation|sony|ps5|god of war/i.test(lower))
-      return 'https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=1200&auto=format&fit=crop&q=80';
-    if (/xbox|microsoft|game pass/i.test(lower))
-      return 'https://images.unsplash.com/photo-1605901309584-818e25960a8f?w=1200&auto=format&fit=crop&q=80';
-    if (/ia\b|intelig[eê]ncia artificial|chatgpt|openai|gemini|deepseek/i.test(lower))
-      return 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=1200&auto=format&fit=crop&q=80';
-    if (/smartphone|celular|iphone|apple|samsung|galaxy/i.test(lower))
-      return 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=1200&auto=format&fit=crop&q=80';
-    if (/livro|literat|autor|editora|romance|bienal/i.test(lower))
-      return 'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=1200&auto=format&fit=crop&q=80';
-    if (/cinema|filme|trailer|hollywood|ator|atriz|netflix|disney/i.test(lower))
-      return 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1200&auto=format&fit=crop&q=80';
-    if (/futebol|flamengo|palmeiras|corinthians|libertadores|champions/i.test(lower))
-      return 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=1200&auto=format&fit=crop&q=80';
+    // Deterministic hash based on title
+    let hash = 0;
+    for (let i = 0; i < (title || '').length; i++) {
+      hash = (hash << 5) - hash + title.charCodeAt(i);
+      hash |= 0;
+    }
+    const h = Math.abs(hash);
 
-    const fallbackCovers: Record<string, string> = {
-      Animes: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=1200&auto=format&fit=crop&q=80',
-      Mangás: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200&auto=format&fit=crop&q=80',
-      Webtoons: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=1200&auto=format&fit=crop&q=80',
-      Livros: 'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?w=1200&auto=format&fit=crop&q=80',
-      Tecnologias: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=1200&auto=format&fit=crop&q=80',
-      Games: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=1200&auto=format&fit=crop&q=80',
-      Cultura: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1200&auto=format&fit=crop&q=80',
-      Futebol: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=1200&auto=format&fit=crop&q=80',
+    // 4. Accurate contextual match based on title keywords with strict word-boundary
+    const lower = (title || '').toLowerCase();
+
+    // Futebol
+    if (/futebol|brasileir[aã]o|libertadores|champions|liga das na[cç][oõ]es|uefa|campeonato|copa\b|gol\b|est[aá]dio|palmeiras|flamengo|corinthians|s[aã]o paulo fc|cruzeiro|gr[eê]mio|botafogo|santos fc|vasco|fluminense|fortaleza ec|real madrid|barcelona|atletico-mg|\b(sc internacional|colorado)\b|\b[A-Za-zÀ-ÿ0-9-]+\s+x\s+[A-Za-zÀ-ÿ0-9-]+/i.test(lower)) {
+      const futebolPool = [
+        'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=1200&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=1200&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1518091043644-c1d4457512c6?w=1200&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?w=1200&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=1200&auto=format&fit=crop&q=80',
+      ];
+      return futebolPool[h % futebolPool.length];
+    }
+
+    // Mercado & Economia
+    if (/mercado|a[cç][oõ]es|ibovespa|selic|d[oó]lar|infla[cç][aã]o|banco central|investimento|startup|finan|bolsa de valores|lucro|faturamento|venture capital/i.test(lower)) {
+      const mercadoPool = [
+        'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=1200&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?w=1200&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1200&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?w=1200&auto=format&fit=crop&q=80',
+      ];
+      return mercadoPool[h % mercadoPool.length];
+    }
+
+    // Virais
+    if (/viral|viralizou|trend\b|tiktok|meme|reels|influencer|redes sociais/i.test(lower)) {
+      const viraisPool = [
+        'https://images.unsplash.com/photo-1563986768609-322da13575f3?w=1200&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1516251193007-45ef944ab0c6?w=1200&auto=format&fit=crop&q=80',
+      ];
+      return viraisPool[h % viraisPool.length];
+    }
+
+    // Listas & Rankings
+    if (/top\s*\d+|ranking|os melhores|as melhores|lista\b|guia definitivo/i.test(lower)) {
+      const listasPool = [
+        'https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=1200&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1507842229450-799042b314a5?w=1200&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=1200&auto=format&fit=crop&q=80',
+      ];
+      return listasPool[h % listasPool.length];
+    }
+
+    // Política
+    if (/pol[ií]tica|congresso|senado|deputad|governo|stf|ministr|diplomacia|elei[cç][aã]o|vota[cç][aã]o/i.test(lower)) {
+      const politicaPool = [
+        'https://images.unsplash.com/photo-1541872703-74c5e44368f9?w=1200&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1529107386315-e1a2ed48a620?w=1200&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1575320181282-9afab399332c?w=1200&auto=format&fit=crop&q=80',
+      ];
+      return politicaPool[h % politicaPool.length];
+    }
+
+    // Geografia & Meio Ambiente
+    if (/geografia|clima|meio ambiente|aquecimento|ant[aá]rtica|bioma|amaz[oô]nia|oceano|mapa|ecossistema/i.test(lower)) {
+      const geoPool = [
+        'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1200&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1200&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1511497584788-87676104235f?w=1200&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1200&auto=format&fit=crop&q=80',
+      ];
+      return geoPool[h % geoPool.length];
+    }
+
+    // Ciência & Astronomia
+    if (/ci[eê]ncia|astronomia|telesc[oó]pio|nasa|planeta|f[ií]sica|biologia|gen[eé]tica|pesquisa|descoberta|exoplaneta|crispr/i.test(lower)) {
+      const cienciaPool = [
+        'https://images.unsplash.com/photo-1507668077129-56e32842fceb?w=1200&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1532094349884-543bc11b234d?w=1200&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?w=1200&auto=format&fit=crop&q=80',
+      ];
+      return cienciaPool[h % cienciaPool.length];
+    }
+
+    // Tecnologias & IA (Strict word boundary to avoid false matching on 'Bahia' or 'dia')
+    if (/\b(ia|i\.a\.)\b|intelig[eê]ncia artificial|chatgpt|openai|gemini|deepseek/i.test(lower)) {
+      return 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=1200&auto=format&fit=crop&q=80';
+    }
+
+    if (/smartphone|celular|iphone|apple|samsung|galaxy/i.test(lower)) {
+      return 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=1200&auto=format&fit=crop&q=80';
+    }
+
+    if (/livro|literat|autor|editora|romance|bienal/i.test(lower)) {
+      return 'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=1200&auto=format&fit=crop&q=80';
+    }
+
+    if (/cinema|filme|trailer|hollywood|ator|atriz|netflix|disney/i.test(lower)) {
+      return 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1200&auto=format&fit=crop&q=80';
+    }
+
+    if (/naruto|boruto|one piece|dragon ball|demon slayer/i.test(lower)) {
+      return 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=1200&auto=format&fit=crop&q=80';
+    }
+
+    if (/playstation|sony|ps5|xbox|nintendo|zelda|mario|switch|game/i.test(lower)) {
+      return 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=1200&auto=format&fit=crop&q=80';
+    }
+
+    // Fallback dictionary with varied choices
+    const fallbackCategoryPools: Record<string, string[]> = {
+      Animes: [
+        'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=1200&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1563089145-599997674d42?w=1200&auto=format&fit=crop&q=80',
+      ],
+      'Mangás': [
+        'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=1200&auto=format&fit=crop&q=80',
+      ],
+      Webtoons: [
+        '/covers/webtoons/solo-leveling-cover.jpg',
+        '/covers/webtoons/orv-cover.jpg',
+        'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=1200&auto=format&fit=crop&q=80',
+      ],
+      Livros: [
+        'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?w=1200&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=1200&auto=format&fit=crop&q=80',
+      ],
+      Tecnologias: [
+        'https://images.unsplash.com/photo-1518770660439-4636190af475?w=1200&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=1200&auto=format&fit=crop&q=80',
+      ],
+      Games: [
+        'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=1200&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=1200&auto=format&fit=crop&q=80',
+      ],
+      Cultura: [
+        'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1200&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1200&auto=format&fit=crop&q=80',
+      ],
+      Futebol: [
+        'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=1200&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=1200&auto=format&fit=crop&q=80',
+      ],
+      Mercado: [
+        'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=1200&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?w=1200&auto=format&fit=crop&q=80',
+      ],
+      Virais: [
+        'https://images.unsplash.com/photo-1563986768609-322da13575f3?w=1200&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1516251193007-45ef944ab0c6?w=1200&auto=format&fit=crop&q=80',
+      ],
+      Listas: [
+        'https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=1200&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1507842229450-799042b314a5?w=1200&auto=format&fit=crop&q=80',
+      ],
+      'Política': [
+        'https://images.unsplash.com/photo-1541872703-74c5e44368f9?w=1200&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1529107386315-e1a2ed48a620?w=1200&auto=format&fit=crop&q=80',
+      ],
+      Geografia: [
+        'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1200&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1200&auto=format&fit=crop&q=80',
+      ],
+      'Ciência': [
+        'https://images.unsplash.com/photo-1507668077129-56e32842fceb?w=1200&auto=format&fit=crop&q=80',
+        'https://images.unsplash.com/photo-1532094349884-543bc11b234d?w=1200&auto=format&fit=crop&q=80',
+      ],
     };
 
-    return fallbackCovers[cat] || fallbackCovers.Animes;
+    const pool = fallbackCategoryPools[cat] || fallbackCategoryPools.Cultura;
+    return pool[h % pool.length];
   }
 
   function cleanFullArticleContent(
@@ -210,6 +376,20 @@ function newsRssPlugin(): Plugin {
       historicalContext = `No atual ciclo de aceleração tecnológica, os setores de software, computação de ponta e entretenimento interativo operam sob pressões inéditas de eficiência, retenção de usuários e monetização de ecossistemas fechados. Os antecedentes deste cenário remontam aos vultosos investimentos da última década em infraestrutura distribuída, chips especializados e modelos de inteligência de alta densidade.\n\nCompreender o impacto de **"${item.title}"** exige examinar como as gigantes de tecnologia e estúdios globais estão equilibrando a urgência por inovação contínua com a disciplina financeira exigida pelos investidores globais.`;
     } else if (catLower.includes('livro')) {
       historicalContext = `O mercado editorial e a circulação literária vivem um momento de redescoberta de formatos. Embora o livro físico mantenha sua solidez como objeto cultural de prestígio, a integração com comunidades digitais, clubes de leitura virtuais e a disponibilização em massa de obras de domínio público remodelaram a relação do leitor com os clássicos e com os lançamentos contemporâneos.\n\nO debate suscitado por **"${item.title}"** insere-se diretamente no esforço contínuo de democratização do acesso à leitura, sustentabilidade das casas editoriais e valorização autoral em tempos de excesso informacional.`;
+    } else if (catLower.includes('futebol')) {
+      historicalContext = `O futebol profissional contemporâneo opera como uma indústria de entretenimento global de altíssima intensidade. A modernização da gestão com as Sociedades Anônimas do Futebol (SAFs), o peso econômico dos direitos de transmissão e o calendário frenético impõem desafios diários a elencos e comissões técnicas.\n\nNeste cenário, **"${item.title}"** marca um momento decisivo para as pretensões táticas e institucionais das equipes envolvidas, repercutindo diretamente na tabela e na paixão das arquibancadas.`;
+    } else if (catLower.includes('mercado') || catLower.includes('econom')) {
+      historicalContext = `Os ciclos de política monetária, o comportamento das taxas de juros básicas e as pressões inflacionárias globais formam a moldura onde as decisões corporativas são tomadas. Fundos de investimento e empresas reavaliam custos de captação e planos de expansão a cada indicador financeiro.\n\nA movimentação em torno de **"${item.title}"** reflete a dinâmica dos mercados em antecipar cenários de liquidez, governança e valor de longo prazo.`;
+    } else if (catLower.includes('viral') || catLower.includes('trend')) {
+      historicalContext = `A cultura digital dos algoritmos de recomendação acelerada descentralizou a produção de narrativas de massa. Em plataformas orientadas a vídeo curto e áudio compartilhado, ideias e formatos conquistam alcance global em poucas horas.\n\nO desdobramento relatado em **"${item.title}"** evidencia o poder das comunidades virtuais e dos criadores em definir a linguagem e as atenções da sociedade conectada.`;
+    } else if (catLower.includes('lista') || catLower.includes('ranking')) {
+      historicalContext = `Em meio à sobrecarga de lançamentos e opções no ecossistema moderno, a curadoria criteriosa desempenha papel fundamental de discernimento. As melhores seleções analisam mérito técnico, originalidade e durabilidade cultural.\n\nA lista apresentada em **"${item.title}"** fornece um guia referencial e fundamentado para leitores e entusiastas que valorizam o mais alto padrão de qualidade.`;
+    } else if (catLower.includes('política') || catLower.includes('politica')) {
+      historicalContext = `O debate político e as decisões dos poderes constituídos estabelecem as balizas da convivência democrática e do desenvolvimento socioeconômico. A negociação entre instituições, a transparência pública e a participação civil são pilares contínuos de legitimidade.\n\nA pauta trazida por **"${item.title}"** insere-se em um debate vital sobre governança, responsabilidade fiscal e garantia de direitos coletivos.`;
+    } else if (catLower.includes('geografia') || catLower.includes('clima')) {
+      historicalContext = `A relação entre a atividade humana, a ocupação territorial e os equilíbrios ecológicos do planeta ganhou urgência inadiável no século XXI. Mapas, recursos hídricos e biomas constituem a base material que sustenta as sociedades.\n\nA investigação em **"${item.title}"** analisa como as transformações espaciais e climáticas impactam populações, economias e acordos internacionais.`;
+    } else if (catLower.includes('ciência') || catLower.includes('ciencia')) {
+      historicalContext = `A fronteira do conhecimento humano avança por meio da curiosidade disciplinada, experimentação metódica e revisão rigorosa por pares. Da exploração cósmica à biomedicina molecular, cada evidência confirmada abre horizontes inéditos de aplicação.\n\nO feito abordado em **"${item.title}"** simboliza o poder da cooperação científica em responder aos enigmas mais fascinantes da natureza.`;
     } else {
       historicalContext = `Os eventos noticiados em **"${item.title}"** conectam-se a tendências estruturais mais amplas que moldam a dinâmica social, econômica e cultural do momento. Longe de ser um acontecimento fortuito, o episódio é o desfecho de discussões acumuladas ao longo dos últimos meses entre agentes do setor, especialistas e o público consumidor.`;
     }
@@ -350,19 +530,47 @@ function newsRssPlugin(): Plugin {
           // Also add Google News query fallback for extra volume if needed
           const googleFeedPromise = (async () => {
             const queryMap: Record<string, string> = {
-              all: 'animes lancamentos brasil OR livros literatura',
-              livros: 'livros literatura lancamento editora bienal',
-              futebol: 'futebol brasileirao libertadores',
+              all: 'noticias brasil economia cultura futebol ciencia tecnologia',
+              futebol: 'futebol brasileirao libertadores champions copa',
+              mercado: 'mercado financeiro economia ibovespa selic startups',
+              virais: 'viral redes sociais internet trend tiktok memes',
+              listas: 'ranking top 10 melhores lancamentos guia',
+              politica: 'politica brasil congresso governo diplomacia',
+              geografia: 'geografia meio ambiente clima mapas geopolitica',
+              ciencia: 'ciencia astronomia nasa descoberta fisica genetica',
+              animes: 'anime crunchyroll animacao estudio',
+              mangas: 'manga volume editora capitulo lancamento',
+              webtoons: 'webtoon manhwa quadrinhos digital',
+              games: 'games videogame playstation nintendo xbox steam',
+              tecnologias: 'tecnologia inteligencia artificial software smartphone',
+              cultura: 'cinema filme serie musica festival exposicao',
+              livros: 'livros literatura lancamento editora bienal romance',
             };
             const query = queryMap[topic];
             if (!query) return [];
             try {
               const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
               const parsed = await parser.parseURL(rssUrl);
+              const defaultCatMap: Record<string, string> = {
+                futebol: 'Futebol',
+                mercado: 'Mercado',
+                virais: 'Virais',
+                listas: 'Listas',
+                politica: 'Política',
+                geografia: 'Geografia',
+                ciencia: 'Ciência',
+                livros: 'Livros',
+                games: 'Games',
+                tecnologias: 'Tecnologias',
+                animes: 'Animes',
+                mangas: 'Mangás',
+                webtoons: 'Webtoons',
+                cultura: 'Cultura',
+              };
               return (parsed.items || []).map((it) => ({
                 ...it,
                 _sourceName: 'Imprensa Nacional',
-                _defaultCategory: topic === 'livros' ? 'Livros' : topic === 'futebol' ? 'Futebol' : 'Cultura',
+                _defaultCategory: defaultCatMap[topic] || 'Cultura',
               }));
             } catch {
               return [];
@@ -407,7 +615,21 @@ function newsRssPlugin(): Plugin {
             // Detect accurate category based on title and feed
             let cat = item._defaultCategory || 'Cultura';
             const lowerTitle = title.toLowerCase();
-            if (/anime|crunchyroll|otaku|animacao|mangaka/i.test(lowerTitle)) {
+            if (/futebol|brasileir[aã]o|libertadores|champions|liga das na[cç][oõ]es|uefa|real madrid|barcelona|flamengo|palmeiras|corinthians|s[aã]o paulo fc|cruzeiro|gr[eê]mio|botafogo|vasco|fluminense|gol\b|campeonato|copa do mundo|craque|sele[cç][aã]o|\b(sc internacional|colorado)\b|\b[A-Za-zÀ-ÿ0-9-]+\s+x\s+[A-Za-zÀ-ÿ0-9-]+/i.test(lowerTitle)) {
+              cat = 'Futebol';
+            } else if (/mercado|a[cç][oõ]es|ibovespa|selic|d[oó]lar|infla[cç][aã]o|banco central|investimento|startup|cripto|bitcoin|bolsa de valores|lucro|faturamento|reais|bilh[oõ]es/i.test(lowerTitle)) {
+              cat = 'Mercado';
+            } else if (/viral|viralizou|trend\b|tiktok|meme|reels|influencer|redes sociais|curiosidade/i.test(lowerTitle)) {
+              cat = 'Virais';
+            } else if (/top\s*\d+|ranking|os melhores|as melhores|lista\b|melhores filmes|melhores livros|melhores celulares|guia definitivo/i.test(lowerTitle)) {
+              cat = 'Listas';
+            } else if (/pol[ií]tica|congresso|senado|deputad|governo|stf|ministr|diplomacia|embaixad|paz\b|coopera[cç][aã]o internacional|elei[cç][aã]o|vota[cç][aã]o/i.test(lowerTitle)) {
+              cat = 'Política';
+            } else if (/geografia|geopol[ií]tica|clima|meio ambiente|aquecimento global|ant[aá]rtica|floresta|bioma|amaz[oô]nia|oceano|mapa/i.test(lowerTitle)) {
+              cat = 'Geografia';
+            } else if (/ci[eê]ncia|astronomia|telesc[oó]pio|nasa|planeta|f[ií]sica|biologia|gen[eé]tica|m[eé]dica|vacina|laborat[oó]rio|estudo cient[ií]fico|descoberta|universo|exoplaneta/i.test(lowerTitle)) {
+              cat = 'Ciência';
+            } else if (/anime|crunchyroll|otaku|animacao|mangaka/i.test(lowerTitle)) {
               cat = 'Animes';
             } else if (/mang[aá]|panini|jbc|shonen/i.test(lowerTitle)) {
               cat = 'Mangás';
@@ -415,12 +637,10 @@ function newsRssPlugin(): Plugin {
               cat = 'Webtoons';
             } else if (/livro|literat|autor|romance|editora|poesia|bienal/i.test(lowerTitle)) {
               cat = 'Livros';
-            } else if (/tecnolog|ia\b|inteligencia artificial|software|celular|smartphone|apple|google/i.test(lowerTitle)) {
+            } else if (/tecnolog|\b(ia|i\.a\.)\b|intelig[eê]ncia artificial|chatgpt|openai|gemini|deepseek|software|celular|smartphone|apple|google|microsoft/i.test(lowerTitle)) {
               cat = 'Tecnologias';
             } else if (/game|jogo|playstation|nintendo|xbox|steam/i.test(lowerTitle)) {
               cat = 'Games';
-            } else if (/futebol|gol|campeonato|copa|clube/i.test(lowerTitle)) {
-              cat = 'Futebol';
             } else if (/filme|cinema|serie|streaming|hbo|netflix/i.test(lowerTitle)) {
               cat = 'Cultura';
             }

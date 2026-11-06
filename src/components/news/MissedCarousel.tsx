@@ -29,6 +29,7 @@ const MissedCarousel = ({ items }: { items: CuratedNews[] }) => {
                 <ProtectedImage
                   src={item.cover_url}
                   alt={item.title}
+                  category={item.category}
                   className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
                 />
               </div>

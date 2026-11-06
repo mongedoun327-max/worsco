@@ -107,15 +107,79 @@ export const useContents = (options?: { type?: ContentType; category?: string; l
         if (!error && data) dbData = data as unknown as Content[];
       } catch {}
 
-      // If requested type is "book" or all, merge Modern bestsellers and Gutenberg classic books
-      if (!options?.type || options.type === "book") {
+      // If requested type is "book", "academic" or all, merge Scientific, Curricular, Modern bestsellers and Gutenberg books
+      if (!options?.type || options.type === "book" || options.type === "academic") {
         try {
+          const { SCIENTIFIC_ARTICLES } = await import("@/data/scientificArticles");
+          const { CURRICULAR_BOOKS } = await import("@/data/curricularBooks");
           const { MODERN_BOOKS } = await import("@/lib/modernBooks");
           const { fetchGutenbergCatalog } = await import("@/lib/gutenbergBooks");
           const { getAutoImportedBooks } = await import("@/lib/bookAutomation");
 
           const gutenList = await fetchGutenbergCatalog();
           const autoList = await getAutoImportedBooks();
+
+          const sciMapped: Content[] = SCIENTIFIC_ARTICLES
+            .filter((s) => (options?.category && options.category !== "all" ? s.field === options.category || options.category === "Artigos Científicos" : true))
+            .map((s) => ({
+              id: s.id,
+              type: "academic" as ContentType,
+              title: s.title,
+              subtitle: s.subtitle,
+              description: s.description,
+              body: s.description,
+              author: s.author,
+              tags: ["Artigo Científico", "Peer-Reviewed", s.field, "Pesquisa Acadêmica"],
+              category: "Artigos Científicos",
+              slug: s.id,
+              cover: s.cover_url,
+              rating: s.rating,
+              rating_count: s.rating_count,
+              formats: ["Leitura Integral", "Estrutura Acadêmica", "DOI"],
+              language: "pt",
+              year: 2026,
+              size: `${s.chapters.length} Seções Acadêmicas`,
+              views: s.downloads * 2,
+              read_time: s.read_time,
+              episode_count: s.chapters.length,
+              price_cents: 0,
+              currency: "BRL",
+              published: true,
+              featured: true,
+              collection: "Artigos Científicos",
+              created_at: s.published_at,
+            }));
+
+          const currMapped: Content[] = CURRICULAR_BOOKS
+            .filter((c) => (options?.category && options.category !== "all" ? c.discipline === options.category || c.grade_level === options.category || options.category === "Disciplinas Curriculares" : true))
+            .map((c) => ({
+              id: c.id,
+              type: "book" as ContentType,
+              title: c.title,
+              subtitle: c.subtitle,
+              description: c.description,
+              body: c.description,
+              author: c.author,
+              tags: ["Disciplina Curricular", c.discipline, c.grade_level, "Didático"],
+              category: "Disciplinas Curriculares",
+              slug: c.id,
+              cover: c.cover_url,
+              rating: c.rating,
+              rating_count: c.rating_count,
+              formats: ["Teoria Completa", "Exercícios Resolvidos", "ENEM"],
+              language: "pt",
+              year: c.year,
+              size: `${c.chapters.length} Unidades Didáticas`,
+              views: c.downloads * 2,
+              read_time: c.read_time,
+              episode_count: c.chapters.length,
+              price_cents: 0,
+              currency: "BRL",
+              published: true,
+              featured: true,
+              collection: "Disciplinas Curriculares",
+              created_at: new Date(c.year, 0, 1).toISOString(),
+            }));
 
           const autoMapped: Content[] = autoList
             .filter((b) => (options?.category && options.category !== "all" ? b.category === options.category : true))
@@ -208,8 +272,8 @@ export const useContents = (options?: { type?: ContentType; category?: string; l
             }));
 
           const map = new Map<string, Content>();
-          // Automated books first, then modern bestsellers, then classics, then db
-          for (const item of [...autoMapped, ...modernMapped, ...gutenMapped, ...dbData]) {
+          // Scientific articles & Curricular textbooks first, then Automated books, then modern bestsellers, then classics, then db
+          for (const item of [...sciMapped, ...currMapped, ...autoMapped, ...modernMapped, ...gutenMapped, ...dbData]) {
             if (!map.has(item.id)) map.set(item.id, item);
           }
           const combined = Array.from(map.values());
@@ -335,6 +399,78 @@ export const useContent = (id?: string) =>
     queryKey: ["content", id],
     enabled: !!id,
     queryFn: async () => {
+      // Check Scientific Articles
+      if (id.startsWith("sci-")) {
+        const { SCIENTIFIC_ARTICLES } = await import("@/data/scientificArticles");
+        const found = SCIENTIFIC_ARTICLES.find((s) => s.id === id);
+        if (found) {
+          return {
+            id: found.id,
+            type: "academic" as ContentType,
+            title: found.title,
+            subtitle: found.subtitle,
+            description: found.description,
+            body: found.description,
+            author: found.author,
+            tags: ["Artigo Científico", "Peer-Reviewed", found.field, "Pesquisa Acadêmica"],
+            category: "Artigos Científicos",
+            slug: found.id,
+            cover: found.cover_url,
+            rating: found.rating,
+            rating_count: found.rating_count,
+            formats: ["Leitura Integral", "Estrutura Acadêmica", "DOI"],
+            language: "pt",
+            year: 2026,
+            size: `${found.chapters.length} Seções Acadêmicas`,
+            views: found.downloads * 2,
+            read_time: found.read_time,
+            episode_count: found.chapters.length,
+            price_cents: 0,
+            currency: "BRL",
+            published: true,
+            featured: true,
+            collection: "Artigos Científicos",
+            created_at: found.published_at,
+          } as Content;
+        }
+      }
+
+      // Check Curricular Textbooks
+      if (id.startsWith("curr-")) {
+        const { CURRICULAR_BOOKS } = await import("@/data/curricularBooks");
+        const found = CURRICULAR_BOOKS.find((c) => c.id === id);
+        if (found) {
+          return {
+            id: found.id,
+            type: "book" as ContentType,
+            title: found.title,
+            subtitle: found.subtitle,
+            description: found.description,
+            body: found.description,
+            author: found.author,
+            tags: ["Disciplina Curricular", found.discipline, found.grade_level, "Didático"],
+            category: "Disciplinas Curriculares",
+            slug: found.id,
+            cover: found.cover_url,
+            rating: found.rating,
+            rating_count: found.rating_count,
+            formats: ["Teoria Completa", "Exercícios Resolvidos", "ENEM"],
+            language: "pt",
+            year: found.year,
+            size: `${found.chapters.length} Unidades Didáticas`,
+            views: found.downloads * 2,
+            read_time: found.read_time,
+            episode_count: found.chapters.length,
+            price_cents: 0,
+            currency: "BRL",
+            published: true,
+            featured: true,
+            collection: "Disciplinas Curriculares",
+            created_at: new Date(found.year, 0, 1).toISOString(),
+          } as Content;
+        }
+      }
+
       // Check Modern Bestsellers
       if (id.startsWith("mod-")) {
         const { MODERN_BOOKS } = await import("@/lib/modernBooks");
@@ -469,6 +605,46 @@ export const useEpisodes = (contentId?: string) =>
     enabled: !!contentId,
     queryFn: async () => {
       if (!contentId) return [];
+
+      // Check Scientific Articles chapters
+      if (contentId.startsWith("sci-")) {
+        try {
+          const { SCIENTIFIC_ARTICLES } = await import("@/data/scientificArticles");
+          const found = SCIENTIFIC_ARTICLES.find((s) => s.id === contentId);
+          if (found && found.chapters) {
+            return found.chapters.map((ch) => ({
+              id: ch.id,
+              content_id: contentId,
+              number: ch.position,
+              title: ch.title,
+              body: ch.content,
+              images: [],
+              is_free: true,
+              published_at: found.published_at,
+            })) as Episode[];
+          }
+        } catch {}
+      }
+
+      // Check Curricular Textbooks chapters
+      if (contentId.startsWith("curr-")) {
+        try {
+          const { CURRICULAR_BOOKS } = await import("@/data/curricularBooks");
+          const found = CURRICULAR_BOOKS.find((c) => c.id === contentId);
+          if (found && found.chapters) {
+            return found.chapters.map((ch) => ({
+              id: ch.id,
+              content_id: contentId,
+              number: ch.position,
+              title: ch.title,
+              body: ch.content,
+              images: [],
+              is_free: true,
+              published_at: new Date(found.year, 0, 1).toISOString(),
+            })) as Episode[];
+          }
+        } catch {}
+      }
 
       // Check Curated Webtoon episodes
       if (contentId.startsWith("wt-") || contentId.startsWith("solo-") || contentId.startsWith("omniscient-") || contentId.startsWith("tower-") || contentId.startsWith("nano-") || contentId.startsWith("lore-") || contentId.startsWith("eleceed-") || contentId.startsWith("wind-")) {

@@ -10,15 +10,15 @@ export interface SyndicatedNewsItem extends NewsItem {
   key_takeaways?: string[];
 }
 
-const STORAGE_KEY = "worscoi_syndicated_news_v7";
-const LAST_SYNC_KEY = "worscoi_news_last_sync_v7";
-const SYNC_INTERVAL_MS = 8 * 60 * 1000; // 8 minutes cache TTL
+const STORAGE_KEY = "worscoi_syndicated_news_v8";
+const LAST_SYNC_KEY = "worscoi_news_last_sync_v8";
+const SYNC_INTERVAL_MS = 6 * 60 * 1000; // 6 minutes cache TTL
 
 /** Clear legacy versions from localStorage */
 const clearLegacyCache = () => {
   if (typeof window === "undefined") return;
   try {
-    for (let i = 1; i <= 6; i++) {
+    for (let i = 1; i <= 7; i++) {
       localStorage.removeItem(`worscoi_syndicated_news_v${i}`);
       localStorage.removeItem(`worscoi_news_last_sync_v${i}`);
     }
@@ -81,6 +81,13 @@ export async function syncDailyNews(force = false): Promise<SyndicatedNewsItem[]
   }
 
   const topics = [
+    { topic: "futebol", limit: 30 },
+    { topic: "mercado", limit: 30 },
+    { topic: "politica", limit: 30 },
+    { topic: "ciencia", limit: 30 },
+    { topic: "geografia", limit: 25 },
+    { topic: "virais", limit: 25 },
+    { topic: "listas", limit: 25 },
     { topic: "animes", limit: 30 },
     { topic: "mangas", limit: 25 },
     { topic: "webtoons", limit: 20 },

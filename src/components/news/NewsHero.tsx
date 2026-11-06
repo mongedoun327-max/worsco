@@ -51,6 +51,7 @@ const NewsHero = ({ item }: { item: CuratedNews }) => (
             <ProtectedImage
               src={item.cover_url}
               alt={item.title}
+              category={item.category}
               priority
               className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
             />

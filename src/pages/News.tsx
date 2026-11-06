@@ -159,9 +159,9 @@ const News = () => {
               </span>
               <span>Feeds Diários Automáticos • RSS & Google News</span>
             </div>
-            <h1 className="text-2xl md:text-3xl font-light tracking-tight text-foreground mb-3">Notícias</h1>
-            <p className="text-sm text-muted-foreground font-light max-w-md mx-auto">
-              Acompanhe lançamentos de animes, mangás, literatura, cultura e tecnologia em tempo real
+            <h1 className="text-2xl md:text-3xl font-light tracking-tight text-foreground mb-3">Portal de Notícias Worscoi</h1>
+            <p className="text-sm text-muted-foreground font-light max-w-xl mx-auto">
+              Cobertura contínua e aprofundada: futebol, mercado, tendências virais, listas, política, geografia, ciência, literatura e entretenimento global
             </p>
           </div>
 
