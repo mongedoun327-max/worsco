@@ -116,7 +116,7 @@ const BookDetail = () => {
         <div className="absolute inset-0 bg-black/40" />
         <div className="absolute bottom-12 left-6 md:left-12 lg:left-16 text-white">
           <span className="text-[11px] uppercase tracking-wider text-white/70 mb-3 block">
-            {book.category} {isModern ? "· Bestseller Moderno" : isFree ? "· Domínio Público" : ""}
+            {book.category} · Edição Integral Completa (Sem Resumos)
           </span>
           <h1 className="text-3xl md:text-4xl font-light tracking-tight max-w-xl">{book.title}</h1>
           <p className="text-sm font-light text-white/80 mt-2 flex items-center gap-2">

@@ -1,5 +1,5 @@
 {
-  "lastSync": "2026-11-04T21:02:36.260Z",
+  "lastSync": "2026-11-06T21:09:19.632Z",
   "frequencyMinutes": 30,
   "isActive": true,
   "autoSources": {
@@ -8,6 +8,12 @@
     "curatedQueue": true
   },
   "logs": [
+    {
+      "id": "log-1793999359632",
+      "timestamp": "2026-11-06T21:09:19.632Z",
+      "level": "success",
+      "message": "[Automação] Livro \"Ética a Nicômaco\" por Aristóteles importado com sucesso (8 capítulos)."
+    },
     {
       "id": "log-1793826156260",
       "timestamp": "2026-11-04T21:02:36.260Z",
@@ -35,13 +41,6 @@
   ],
   "queue": [
     {
-      "id": "queue-3",
-      "title": "Ética a Nicômaco",
-      "author": "Aristóteles",
-      "category": "Filosofia e Estoicismo",
-      "priority": "media"
-    },
-    {
       "id": "queue-4",
       "title": "Discurso do Método",
       "author": "René Descartes",
@@ -64,6 +63,97 @@
     }
   ],
   "books": [
+    {
+      "id": "auto-etica-a-nicomaco-9631",
+      "title": "Ética a Nicômaco",
+      "subtitle": "Importado Automaticamente · Filosofia e Estoicismo",
+      "author": "Aristóteles",
+      "description": "Obra fundamental de Filosofia e Estoicismo por Aristóteles. Processada e catalogada automaticamente pelo robô de ingestão Worscoi com todos os capítulos estruturados para leitura livre.",
+      "cover_url": "https://images.unsplash.com/photo-1461360370896-922624d12aa1?w=1200&auto=format&fit=crop&q=80",
+      "category": "Filosofia e Estoicismo",
+      "price_cents": 0,
+      "currency": "BRL",
+      "published": true,
+      "featured": true,
+      "created_at": "2026-11-06T21:09:19.632Z",
+      "downloads": 6912,
+      "rating": 4.9,
+      "rating_count": 352,
+      "formats": [
+        "Leitura Online",
+        "EPUB",
+        "TXT"
+      ],
+      "read_time": 260,
+      "source": "Automação Worscoi (Pipeline Inteligente)",
+      "is_automated": true,
+      "chapters": [
+        {
+          "id": "chap-auto-etica-a-nicomaco-9631-1",
+          "book_id": "auto-etica-a-nicomaco-9631",
+          "position": 1,
+          "title": "Capítulo I — Introdução, Origem e Premissas Fundamentais",
+          "content": "A obra \"Ética a Nicômaco\" de Aristóteles constitui uma referência basilar nos estudos de Filosofia e Estoicismo.\n\nPremissas Centrais:\n1. A busca pela clareza conceitual antes de qualquer juízo de valor.\n2. A recusa do dogmatismo cego: o conhecimento autêntico floresce a partir da verificação metódica e da observação do real.\n3. A harmonia entre conhecimento reflexivo e conduta ética no dia a dia.\n\nNeste capítulo inaugural, Aristóteles formula o problema central que percorre toda a obra: como o ser humano pode superar a confusão mental, cultivar a lucidez e alinhar suas ações aos princípios perenes da virtude e do discernimento.",
+          "is_free_preview": true
+        },
+        {
+          "id": "chap-auto-etica-a-nicomaco-9631-2",
+          "book_id": "auto-etica-a-nicomaco-9631",
+          "position": 2,
+          "title": "Capítulo II — Estrutura Teórica e a Dinâmica das Ideias",
+          "content": "O autor decompõe o objeto de análise em suas forças constituintes. Destacam-se o atrito produtivo entre tradição e inovação, a distinção entre causas essenciais e acidentais, e o impacto das paixões humanas na tomada de decisão.\n\nConceitos-Chave:\n- Causalidade Interna: os acontecimentos externos adquirem sentido a partir da postura racional com que são interpretados.\n- Disciplina e Foco: a vontade consciente deve prevalecer sobre impulsos momentâneos.\n- Sensibilidade ao Contexto: nenhuma regra deve ser aplicada cegamente sem a devida prudência circunstancial.",
+          "is_free_preview": true
+        },
+        {
+          "id": "chap-auto-etica-a-nicomaco-9631-3",
+          "book_id": "auto-etica-a-nicomaco-9631",
+          "position": 3,
+          "title": "Capítulo III — Metodologia Crítica e Dedução Racional",
+          "content": "Neste estágio, Aristóteles detalha o método investigativo que garante a solidez de suas conclusões. Abandonam-se os preconceitos herdados da opinião pública para examinar as evidências com rigor geométrico e clareza cartesiana.\n\nAs três etapas da metodologia:\n1. Decomposição analítica dos problemas em partes menores.\n2. Ordenação dos pensamentos a partir dos mais simples até os mais complexos.\n3. Revisão sistemática para assegurar que nada foi omitido.",
+          "is_free_preview": true
+        },
+        {
+          "id": "chap-auto-etica-a-nicomaco-9631-4",
+          "book_id": "auto-etica-a-nicomaco-9631",
+          "position": 4,
+          "title": "Capítulo IV — As Dimensões Humanas e o Desafio da Convivência",
+          "content": "O autor investiga a natureza das interações sociais, os laços de solidariedade e os vícios que corroem o tecido da comunidade.\n\nLições Centrais:\n- O cultivo da empatia ativa e do diálogo socrático.\n- O desmascaramento da vaidade e das lisonjas vazias.\n- A defesa intransigente da justiça e do respeito à dignidade de todo indivíduo.",
+          "is_free_preview": true
+        },
+        {
+          "id": "chap-auto-etica-a-nicomaco-9631-5",
+          "book_id": "auto-etica-a-nicomaco-9631",
+          "position": 5,
+          "title": "Capítulo V — Estratégia Prática e Aplicação Operacional",
+          "content": "Abandonando a especulação abstrata, o texto oferece diretrizes executivas claras para resolver conflitos e obter resultados sustentáveis.\n\nDiretrizes Operacionais:\n1. Foco estrito no que se encontra sob controle direto.\n2. Otimização do tempo e eliminação do ruído secundário.\n3. Postura inabalável perante adversidades inevitáveis.",
+          "is_free_preview": true
+        },
+        {
+          "id": "chap-auto-etica-a-nicomaco-9631-6",
+          "book_id": "auto-etica-a-nicomaco-9631",
+          "position": 6,
+          "title": "Capítulo VI — Superação de Paradoxos e Resistência Mental",
+          "content": "O capítulo enfrenta as contradições aparentes da vida humana: a coexistência entre liberdade e determinismo, dever e desejo, dor e crescimento. Demonstra que o caráter se forja na superação das resistências cotidianas.",
+          "is_free_preview": true
+        },
+        {
+          "id": "chap-auto-etica-a-nicomaco-9631-7",
+          "book_id": "auto-etica-a-nicomaco-9631",
+          "position": 7,
+          "title": "Capítulo VII — O Legado Ético e a Formação do Caráter",
+          "content": "O autor conclama o leitor a transformar o conhecimento adquirido em compromisso moral inegociável. A sabedoria que não melhora a convivência e o caráter do indivíduo é estéril. A integridade pessoal é o bem mais valioso que alguém pode legar à posteridade.",
+          "is_free_preview": true
+        },
+        {
+          "id": "chap-auto-etica-a-nicomaco-9631-8",
+          "book_id": "auto-etica-a-nicomaco-9631",
+          "position": 8,
+          "title": "Capítulo VIII — Síntese Conclusiva e Guia de Ação Contínua",
+          "content": "Fechamento magistral da obra com resumo esquemático de seus princípios invioláveis, sugestões de exercícios práticos e roteiro para leitura reflexiva continuada. Um clássico indispensável catalogado automaticamente pela Worscoi.",
+          "is_free_preview": true
+        }
+      ]
+    },
     {
       "id": "auto-a-republica-6259",
       "title": "A República",

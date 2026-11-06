@@ -18,12 +18,14 @@ import {
   Pause,
   Sliders,
   CheckCircle2,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { toast } from "@/hooks/use-toast";
 import { useContent, useEpisodes, useSaveProgress, useTrackInteraction } from "@/hooks/useContents";
 import { useLibraryStore } from "@/store/useLibraryStore";
+import { fetchOfficialChapterPanels, getProxiedWebtoonImageUrl } from "@/lib/webtoonOfficialSync";
 
 export const WebtoonReader = () => {
   const { id, episodeId } = useParams<{ id: string; episodeId: string }>();
@@ -55,6 +57,39 @@ export const WebtoonReader = () => {
   const [isAutoScrolling, setIsAutoScrolling] = useState(false);
   const [autoScrollSpeed, setAutoScrollSpeed] = useState(2);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  // Live official panels state
+  const [livePanels, setLivePanels] = useState<string[]>([]);
+  const [isFetchingPanels, setIsFetchingPanels] = useState(false);
+
+  useEffect(() => {
+    setLivePanels([]);
+    if (!activeEpisode) return;
+
+    if (activeEpisode.images && activeEpisode.images.length > 1) {
+      setLivePanels(activeEpisode.images);
+      return;
+    }
+
+    const viewerUrl = (activeEpisode as any).viewer_url;
+    if (viewerUrl) {
+      setIsFetchingPanels(true);
+      fetchOfficialChapterPanels(viewerUrl)
+        .then((pages) => {
+          if (pages && pages.length > 0) {
+            setLivePanels(pages);
+          }
+        })
+        .finally(() => {
+          setIsFetchingPanels(false);
+        });
+    }
+  }, [activeEpisode?.id, (activeEpisode as any)?.viewer_url]);
+
+  const currentPanels = useMemo(() => {
+    if (livePanels.length > 0) return livePanels;
+    return activeEpisode?.images && activeEpisode.images.length > 1 ? activeEpisode.images : [];
+  }, [livePanels, activeEpisode?.images]);
 
   // Community reactions
   const [reactions, setReactions] = useState<{ [key: string]: number }>({
@@ -354,29 +389,120 @@ export const WebtoonReader = () => {
           </p>
         </div>
 
-        {/* Continuous Illustrated Manhwa Strip — Seamless Vertical Reading */}
-        <div className={`w-full ${widthClasses[containerWidth]} flex flex-col items-center gap-0 shadow-2xl bg-black overflow-hidden`}>
-          {activeEpisode.images && activeEpisode.images.length > 0 ? (
-            activeEpisode.images.map((panelUrl, index) => (
+        {/* Continuous Illustrated Manhwa Strip OR Official Chapter Showcase Card */}
+        {activeEpisode.images && activeEpisode.images.length > 1 ? (
+          <div className={`w-full ${widthClasses[containerWidth]} flex flex-col items-center gap-0 shadow-2xl bg-black overflow-hidden`}>
+            {activeEpisode.images.map((panelUrl, index) => (
               <div key={index} className="w-full relative group bg-black">
                 <img
                   src={panelUrl}
                   alt={`Página ${index + 1} de ${activeEpisode.images.length} — ${activeEpisode.title}`}
                   loading={index < 4 ? "eager" : "lazy"}
                   decoding="async"
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    target.style.display = "none";
+                  }}
                   className="w-full h-auto block select-none pointer-events-auto"
                 />
                 <span className="absolute bottom-2 right-2 text-[10px] font-mono bg-black/70 text-zinc-400 px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                   {index + 1} / {activeEpisode.images.length}
                 </span>
               </div>
-            ))
-          ) : (
-            <div className="py-24 text-center text-zinc-500 text-sm">
-              Nenhuma página visual disponível para este capítulo.
+            ))}
+          </div>
+        ) : (
+          /* Official Chapter Overview & Showcase Card for cataloged entries */
+          <div className={`w-full ${widthClasses[containerWidth]} px-4 py-8`}>
+            <div className="relative rounded-3xl overflow-hidden border border-zinc-800 bg-gradient-to-b from-zinc-900/90 to-[#12131a] p-6 sm:p-10 shadow-2xl">
+              {/* Subtle background glow from webtoon cover */}
+              <div
+                className="absolute inset-0 opacity-15 blur-3xl pointer-events-none bg-cover bg-center"
+                style={{ backgroundImage: `url(${webtoon.cover})` }}
+              />
+
+              <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
+                {/* Official Cover Card with Badge */}
+                <div className="relative w-48 sm:w-56 shrink-0 aspect-[2/3] rounded-2xl overflow-hidden shadow-2xl border border-zinc-700/80 group">
+                  <img
+                    src={webtoon.cover}
+                    alt={webtoon.title}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                  <div className="absolute top-2 left-2 bg-emerald-500/90 backdrop-blur-md text-black font-bold text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1 shadow-md">
+                    <span className="w-1.5 h-1.5 rounded-full bg-black animate-pulse" />
+                    Capa Oficial
+                  </div>
+                </div>
+
+                {/* Chapter Story Narrative & Information */}
+                <div className="flex-1 space-y-4 text-center md:text-left">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-950/60 border border-emerald-800/50 text-emerald-300 text-xs font-medium">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    <span>Edição Oficial do Manhwa</span>
+                  </div>
+
+                  <h2 className="text-xl sm:text-2xl font-semibold text-white tracking-tight">
+                    {activeEpisode.title}
+                  </h2>
+
+                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 text-xs text-zinc-400">
+                    <span className="bg-zinc-800/80 px-2.5 py-1 rounded-md text-zinc-300">
+                      Capítulo {activeEpisode.number} de {episodes.length}
+                    </span>
+                    <span className="bg-zinc-800/80 px-2.5 py-1 rounded-md text-zinc-300">
+                      {webtoon.tags?.slice(0, 3).join(" • ") || webtoon.category}
+                    </span>
+                    <span className="bg-zinc-800/80 px-2.5 py-1 rounded-md text-zinc-300">
+                      {webtoon.subtitle || "Webtoon Oficial"}
+                    </span>
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-black/40 border border-zinc-800/80 text-sm text-zinc-300 leading-relaxed font-light text-left">
+                    <p className="font-medium text-xs uppercase tracking-wider text-emerald-400 mb-1">
+                      Sinopse do Episódio:
+                    </p>
+                    {activeEpisode.body || webtoon.description}
+                  </div>
+
+                  <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
+                    {nextEpisode ? (
+                      <Button
+                        asChild
+                        className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-medium"
+                      >
+                        <Link to={`/webtoon/${webtoon.id}/ler/${nextEpisode.id}`}>
+                          <span>Avançar para Episódio {nextEpisode.number}</span>
+                          <ArrowRight className="h-4 w-4 ml-1.5" />
+                        </Link>
+                      </Button>
+                    ) : (
+                      <div className="text-xs text-zinc-400 flex items-center gap-1.5">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                        <span>Você está no capítulo mais recente desta obra!</span>
+                      </div>
+                    )}
+
+                    <Button
+                      asChild
+                      variant="outline"
+                      className="w-full sm:w-auto border-zinc-700 bg-zinc-800/60 hover:bg-zinc-800 text-zinc-200"
+                    >
+                      <Link to={`/webtoon/${webtoon.id}`}>Ver Ficha Completa da Obra</Link>
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Informative footnote for readers */}
+              <div className="mt-8 pt-6 border-t border-zinc-800/80 text-center">
+                <p className="text-xs text-zinc-400 font-light max-w-2xl mx-auto">
+                  Este webtoon possui sua capa e metadados oficiais devidamente catalogados no sistema. Para desfrutar de capítulos com rolagens verticais completas de dezenas de páginas em alta resolução, confira também obras como <strong className="text-zinc-200">Solo Leveling</strong> (Eps 1-3), <strong className="text-zinc-200">Omniscient Reader</strong> (Eps 1-2), <strong className="text-zinc-200">The Beginning After the End</strong> (Ep 1) e <strong className="text-zinc-200">Nano Machine</strong> (Ep 1).
+                </p>
+              </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Bottom Episode Actions & Community Interaction Section */}
         <div className={`w-full ${widthClasses[containerWidth]} px-6 py-12 mt-12 space-y-10 border-t border-zinc-900`}>

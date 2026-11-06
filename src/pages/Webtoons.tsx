@@ -43,6 +43,11 @@ export const Webtoons = () => {
   const [search, setSearch] = useState("");
   const [selectedDay, setSelectedDay] = useState<WebtoonDay | "Todos">("Todos");
   const [selectedGenre, setSelectedGenre] = useState<string>("Todos");
+  const [visibleCount, setVisibleCount] = useState(30);
+
+  useEffect(() => {
+    setVisibleCount(30);
+  }, [search, selectedGenre, selectedDay]);
 
   // Fetch all webtoons from hook (which merges curated webtoons)
   const { data: allWebtoons = [], isLoading } = useContents({ type: "webtoon" });
@@ -111,7 +116,12 @@ export const Webtoons = () => {
   const filteredCatalog = useMemo(() => {
     let list = [...webtoonList];
 
-    if (selectedGenre !== "Todos") {
+    if (selectedGenre === "⚡ Leitura Imediata") {
+      list = list.filter((w) =>
+        ["wt-solo-leveling", "wt-omniscient-reader", "wt-the-beginning-after-the-end", "wt-nano-machine"].includes(w.id) ||
+        (w.episode_count && w.episode_count > 0)
+      );
+    } else if (selectedGenre !== "Todos") {
       const g = selectedGenre.toLowerCase();
       list = list.filter(
         (w) =>
@@ -138,6 +148,10 @@ export const Webtoons = () => {
     return list;
   }, [webtoonList, selectedGenre, selectedDay, search]);
 
+  const displayedCatalog = useMemo(() => {
+    return filteredCatalog.slice(0, visibleCount);
+  }, [filteredCatalog, visibleCount]);
+
   // Collections groupings
   const hunterCollection = useMemo(
     () => webtoonList.filter((w) => w.tags?.includes("Ação") || w.tags?.includes("Sobrenatural")).slice(0, 4),
@@ -147,8 +161,20 @@ export const Webtoons = () => {
     () => webtoonList.filter((w) => w.tags?.includes("Murim")).slice(0, 4),
     [webtoonList]
   );
+  const isekaiCollection = useMemo(
+    () => webtoonList.filter((w) => w.tags?.includes("Isekai") || w.collection?.includes("Isekai")).slice(0, 4),
+    [webtoonList]
+  );
   const romanceCollection = useMemo(
     () => webtoonList.filter((w) => w.tags?.includes("Romance") || w.tags?.includes("Drama")).slice(0, 4),
+    [webtoonList]
+  );
+  const sportsCollection = useMemo(
+    () => webtoonList.filter((w) => w.tags?.includes("Esportes") || w.tags?.includes("Escolar")).slice(0, 4),
+    [webtoonList]
+  );
+  const scifiCollection = useMemo(
+    () => webtoonList.filter((w) => w.tags?.includes("Sci-Fi") || w.tags?.includes("Terror")).slice(0, 4),
     [webtoonList]
   );
 
@@ -189,6 +215,123 @@ export const Webtoons = () => {
           </div>
         </section>
       )}
+
+      {/* 2.5. Dedicated Shelf for Full-Scan In-App Readable Manhwas */}
+      <section className="py-12 bg-gradient-to-b from-emerald-950/20 via-background to-background border-b border-border/60">
+        <div className="container mx-auto px-6 lg:px-12">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
+            <div>
+              <span className="text-[11px] uppercase tracking-wider text-emerald-500 font-bold mb-1.5 flex items-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5" />
+                Scans Verificados · 100% Páginas Originais
+              </span>
+              <h2 className="text-2xl md:text-3xl font-light tracking-tight text-foreground">
+                Leitura Imediata no App
+              </h2>
+              <p className="text-xs text-muted-foreground mt-1 max-w-xl font-light">
+                Obras completas com tiras verticais autênticas de alta definição. Sem capas repetidas ou capítulos fictícios.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setSelectedGenre("⚡ Leitura Imediata");
+                const el = document.getElementById("catalogo");
+                el?.scrollIntoView({ behavior: "smooth" });
+              }}
+              className="text-xs rounded-full border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 self-start sm:self-auto"
+            >
+              Filtrar no Catálogo Geral →
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {[
+              {
+                id: "wt-solo-leveling",
+                title: "Solo Leveling",
+                cover: "/covers/webtoons/solo-leveling-cover.jpg",
+                episodesInfo: "3 Capítulos · 82 Páginas Reais",
+                description: "Sung Jin-woo e a Masmorra Dupla de Cártem na íntegra.",
+                genre: "Ação & Caçadores",
+                readUrl: "/webtoon/wt-solo-leveling/ep/wt-solo-ep-1",
+              },
+              {
+                id: "wt-omniscient-reader",
+                title: "O Ponto de Vista do Leitor Onisciente",
+                cover: "/covers/webtoons/orv-cover.jpg",
+                episodesInfo: "2 Capítulos · 73 Páginas Reais",
+                description: "Kim Dokja no metrô 3434 quando o primeiro cenário começa.",
+                genre: "Fantasia & Sistemas",
+                readUrl: "/webtoon/wt-omniscient-reader/ep/wt-orv-ep-1",
+              },
+              {
+                id: "wt-the-beginning-after-the-end",
+                title: "The Beginning After the End",
+                cover: "/covers/webtoons/tbate-cover.jpg",
+                episodesInfo: "Capítulo 1 · 55 Páginas Reais",
+                description: "O despertar de Arthur Leywin no novo mundo de Dicathen.",
+                genre: "Isekai & Realeza",
+                readUrl: "/webtoon/wt-the-beginning-after-the-end/ep/wt-tbate-ep-1",
+              },
+              {
+                id: "wt-nano-machine",
+                title: "Nano Machine",
+                cover: "/covers/webtoons/nano-machine-cover.jpg",
+                episodesInfo: "Capítulo 1 · 21 Páginas Reais",
+                description: "Cheon Yeo-woon recebe a injeção da máquina de 7ª geração.",
+                genre: "Murim & Sci-Fi",
+                readUrl: "/webtoon/wt-nano-machine/ep/wt-nano-ep-1",
+              },
+            ].map((m) => (
+              <div
+                key={m.id}
+                className="group p-3.5 rounded-2xl bg-card border border-border hover:border-emerald-500/50 shadow-soft transition-all flex flex-col justify-between"
+              >
+                <div>
+                  <div className="relative aspect-[3/4] rounded-xl overflow-hidden bg-accent mb-3">
+                    <img
+                      src={m.cover}
+                      alt={m.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                    <div className="absolute top-2 left-2 flex items-center gap-1 bg-emerald-600/90 backdrop-blur-md text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-md">
+                      <Sparkles className="h-2.5 w-2.5" />
+                      <span>Scans Oficiais</span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-500 block mb-1">
+                    {m.genre}
+                  </span>
+                  <h3 className="text-sm font-semibold text-foreground tracking-tight line-clamp-1 group-hover:text-emerald-500 transition-colors">
+                    {m.title}
+                  </h3>
+                  <p className="text-[11px] text-muted-foreground line-clamp-2 mt-1 font-light">
+                    {m.description}
+                  </p>
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-border/60 flex items-center justify-between">
+                  <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                    {m.episodesInfo}
+                  </span>
+                  <Button
+                    asChild
+                    size="sm"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full text-xs px-3.5 h-7 shadow-soft"
+                  >
+                    <Link to={m.readUrl}>
+                      Ler Agora
+                      <ArrowRight className="ml-1 h-3 w-3" />
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* 3. Weekly Release Schedule Section */}
       <section className="py-16 lg:py-20 bg-secondary/30 border-b border-border/50">
@@ -345,7 +488,7 @@ export const Webtoons = () => {
         </div>
       </section>
 
-      {/* 5. Curated Channels / Tropes (Murim, Hunters, Romance) */}
+      {/* 5. Curated Channels / Tropes (Murim, Hunters, Romance, Isekai) */}
       <section className="py-16 lg:py-20 bg-secondary/20 border-y border-border/50">
         <div className="container mx-auto px-6 lg:px-12 space-y-16">
           {/* Sistemas & Caçadores Tray */}
@@ -395,6 +538,58 @@ export const Webtoons = () => {
               ))}
             </div>
           </div>
+
+          {/* Isekai & Realeza Tray */}
+          {isekaiCollection.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-lg bg-purple-500/10 text-purple-500">
+                    <Sparkles className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg md:text-xl font-light text-foreground tracking-tight">
+                      Isekai, Reencarnação & Vilãs Nobres
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      Segundas chances, intrigas palacianas e estratégias brilhantes.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {isekaiCollection.map((w) => (
+                  <WebtoonCard key={w.id} item={w} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Romance & Emoção Tray */}
+          {romanceCollection.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-lg bg-rose-500/10 text-rose-500">
+                    <Heart className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg md:text-xl font-light text-foreground tracking-tight">
+                      Romance, Drama & Emoção
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      Paixões intensas, encontros do destino e laços inesquecíveis.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {romanceCollection.map((w) => (
+                  <WebtoonCard key={w.id} item={w} />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
@@ -403,13 +598,13 @@ export const Webtoons = () => {
         <div className="container mx-auto px-6 lg:px-12">
           <div className="text-center max-w-xl mx-auto mb-10">
             <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-2 block">
-              Explorar Catálogo
+              Explorar Catálogo ({webtoonList.length}+ Obras)
             </span>
             <h2 className="text-2xl md:text-4xl font-light tracking-tight text-foreground">
-              Todos os Webtoons
+              Catálogo Geral de Webtoons
             </h2>
             <p className="text-xs text-muted-foreground mt-2 font-light">
-              Filtre por gênero ou busque diretamente pela sua obra favorita.
+              Mais de {webtoonList.length} obras selecionadas entre todos os gêneros: Ação, Murim, Isekai, Romance, Esportes, Terror e Sci-Fi com episódios completos.
             </p>
           </div>
 
@@ -434,7 +629,18 @@ export const Webtoons = () => {
           </div>
 
           {/* Genre Pills Filter */}
-          <div className="flex flex-wrap items-center justify-center gap-2 mb-12">
+          <div className="flex flex-wrap items-center justify-center gap-2 mb-10">
+            <button
+              onClick={() => setSelectedGenre("⚡ Leitura Imediata")}
+              className={`text-xs px-4 py-2 rounded-full border transition-all flex items-center gap-1.5 ${
+                selectedGenre === "⚡ Leitura Imediata"
+                  ? "bg-emerald-600 text-white border-emerald-600 shadow-sm font-medium"
+                  : "bg-card text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
+              }`}
+            >
+              <Sparkles className="h-3.5 w-3.5 fill-current" />
+              <span>Leitura Imediata (Scans Completos)</span>
+            </button>
             {WEBTOON_GENRES.map((genre) => (
               <button
                 key={genre}
@@ -472,11 +678,40 @@ export const Webtoons = () => {
               </Button>
             </div>
           ) : (
-            <WebtoonGrid>
-              {filteredCatalog.map((item) => (
-                <WebtoonCard key={item.id} item={item} />
-              ))}
-            </WebtoonGrid>
+            <>
+              <div className="flex items-center justify-between mb-4 px-1 text-xs text-muted-foreground">
+                <span>
+                  Exibindo <strong className="text-foreground">{displayedCatalog.length}</strong> de <strong className="text-foreground">{filteredCatalog.length}</strong> webtoons
+                </span>
+                {filteredCatalog.length > displayedCatalog.length && (
+                  <span>
+                    +{filteredCatalog.length - displayedCatalog.length} obras restantes
+                  </span>
+                )}
+              </div>
+              <WebtoonGrid>
+                {displayedCatalog.map((item) => (
+                  <WebtoonCard key={item.id} item={item} />
+                ))}
+              </WebtoonGrid>
+              {displayedCatalog.length < filteredCatalog.length && (
+                <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-3">
+                  <Button
+                    onClick={() => setVisibleCount((prev) => prev + 30)}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full text-xs px-8 shadow-soft"
+                  >
+                    Carregar Mais Obras (+30)
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setVisibleCount(filteredCatalog.length)}
+                    className="rounded-full text-xs px-6"
+                  >
+                    Exibir Todos ({filteredCatalog.length})
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </section>

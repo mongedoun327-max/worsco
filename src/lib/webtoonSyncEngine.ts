@@ -78,29 +78,14 @@ const TBATE_ALL_PAGES = Array.from({ length: 55 }, (_, i) => `/chapters/tbate/ep
 const NANO_ALL_PAGES = Array.from({ length: 21 }, (_, i) => `/chapters/nano-machine/ep-1/page-${i + 1}.jpg`);
 
 import { auditAndSanitizeCatalog, generateContentHash } from "./webtoonSanitizer";
+import { getOfficialCover } from "./webtoonCovers";
 
-const MASTER_PANELS_POOL = [
-  ...SOLO_ALL_PAGES,
-  ...ORV_ALL_PAGES,
-  ...TBATE_ALL_PAGES,
-  ...NANO_ALL_PAGES,
-];
-
-// Panels pool strictly excluding Episode 1 of any series (prevents cross-chapter contamination)
-const NON_EP1_PANELS_POOL = [
-  ...SOLO_EP2_PAGES,
-  ...SOLO_EP3_PAGES,
-  ...ORV_EP2_PAGES,
-  ...TBATE_ALL_PAGES,
-  ...NANO_ALL_PAGES,
-];
-
-// Resolves authentic guaranteed existing panels for any chapter of any webtoon with STRICT deduplication
+// Strictly isolated panel sets — each series ONLY receives its own authentic assets
 function resolveChapterPanels(webtoonId: string, chapterNum: number): { panels: string[]; cover: string; hash: string } {
-  const normId = webtoonId.toLowerCase().replace(/^wt-/, "");
+  const normId = webtoonId.toLowerCase().replace(/^wt-/, "").replace(/^auto-/, "");
 
+  // 1. Solo Leveling: strictly isolate to its own files
   if (normId.includes("solo-leveling")) {
-    // Strictly isolate Chapters 1, 2, and 3 to their authentic canonical files
     if (chapterNum === 1) {
       const hash = generateContentHash(normId, 1, SOLO_EP1_PAGES);
       return { panels: SOLO_EP1_PAGES, cover: SOLO_EP1_PAGES[0], hash };
@@ -113,19 +98,13 @@ function resolveChapterPanels(webtoonId: string, chapterNum: number): { panels: 
       const hash = generateContentHash(normId, 3, SOLO_EP3_PAGES);
       return { panels: SOLO_EP3_PAGES, cover: SOLO_EP3_PAGES[0], hash };
     }
-
-    // For chapters 4..300: strictly draw from NON_EP1 pool to guarantee ZERO contamination with Chapter 1
-    const windowSize = 18;
-    const pool = NON_EP1_PANELS_POOL;
-    const maxStart = pool.length - windowSize;
-    // Golden ratio salt ensures no repeating periodicity across 300 chapters
-    const startIdx = Math.floor((chapterNum * 29) % maxStart);
-    const panels = pool.slice(startIdx, startIdx + windowSize);
-    const hash = generateContentHash(normId, chapterNum, panels);
-    return { panels, cover: panels[0] || SOLO_EP2_PAGES[0], hash };
+    const cover = getOfficialCover(webtoonId).cover;
+    const hash = generateContentHash(normId, chapterNum, [cover]);
+    return { panels: [cover], cover, hash };
   }
 
-  if (normId.includes("omniscient-reader")) {
+  // 2. Omniscient Reader: strictly isolate to its own files
+  if (normId.includes("omniscient-reader") || normId.includes("orv")) {
     if (chapterNum === 1) {
       const hash = generateContentHash(normId, 1, ORV_EP1_PAGES);
       return { panels: ORV_EP1_PAGES, cover: ORV_EP1_PAGES[0], hash };
@@ -134,59 +113,38 @@ function resolveChapterPanels(webtoonId: string, chapterNum: number): { panels: 
       const hash = generateContentHash(normId, 2, ORV_EP2_PAGES);
       return { panels: ORV_EP2_PAGES, cover: ORV_EP2_PAGES[0], hash };
     }
-
-    const windowSize = 20;
-    const pool = [...ORV_EP2_PAGES, ...TBATE_ALL_PAGES, ...SOLO_EP3_PAGES];
-    const maxStart = pool.length - windowSize;
-    const startIdx = Math.floor((chapterNum * 19) % maxStart);
-    const panels = pool.slice(startIdx, startIdx + windowSize);
-    const hash = generateContentHash(normId, chapterNum, panels);
-    return { panels, cover: panels[0] || ORV_EP2_PAGES[0], hash };
+    const cover = getOfficialCover(webtoonId).cover;
+    const hash = generateContentHash(normId, chapterNum, [cover]);
+    return { panels: [cover], cover, hash };
   }
 
+  // 3. The Beginning After the End: strictly isolate to its own files
   if (normId.includes("beginning-after") || normId.includes("tbate")) {
     if (chapterNum === 1) {
       const hash = generateContentHash(normId, 1, TBATE_ALL_PAGES);
       return { panels: TBATE_ALL_PAGES, cover: TBATE_ALL_PAGES[0], hash };
     }
-    const windowSize = 20;
-    const pool = [...TBATE_ALL_PAGES, ...SOLO_EP3_PAGES];
-    const maxStart = pool.length - windowSize;
-    const startIdx = Math.floor((chapterNum * 17) % maxStart);
-    const panels = pool.slice(startIdx, startIdx + windowSize);
-    const hash = generateContentHash(normId, chapterNum, panels);
-    return { panels, cover: "/covers/webtoons/tbate-cover.jpg", hash };
+    const cover = getOfficialCover(webtoonId).cover;
+    const hash = generateContentHash(normId, chapterNum, [cover]);
+    return { panels: [cover], cover, hash };
   }
 
+  // 4. Nano Machine: strictly isolate to its own files
   if (normId.includes("nano-machine")) {
     if (chapterNum === 1) {
       const hash = generateContentHash(normId, 1, NANO_ALL_PAGES);
       return { panels: NANO_ALL_PAGES, cover: NANO_ALL_PAGES[0], hash };
     }
-    const windowSize = 16;
-    const pool = [...NANO_ALL_PAGES, ...TBATE_ALL_PAGES];
-    const maxStart = pool.length - windowSize;
-    const startIdx = Math.floor((chapterNum * 13) % maxStart);
-    const panels = pool.slice(startIdx, startIdx + windowSize);
-    const hash = generateContentHash(normId, chapterNum, panels);
-    return { panels, cover: "/covers/webtoons/nano-machine-cover.jpg", hash };
+    const cover = getOfficialCover(webtoonId).cover;
+    const hash = generateContentHash(normId, chapterNum, [cover]);
+    return { panels: [cover], cover, hash };
   }
 
-  // Tower of God, Eleceed, Wind Breaker and other titles:
-  const windowSize = 20;
-  const pool = NON_EP1_PANELS_POOL;
-  const maxStart = pool.length - windowSize;
-  const seed = normId.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  const startIdx = Math.floor((seed + chapterNum * 23) % maxStart);
-  const panels = pool.slice(startIdx, startIdx + windowSize);
-  const hash = generateContentHash(normId, chapterNum, panels);
-
-  let cover = `/covers/webtoons/${normId}-cover.jpg`;
-  if (!cover || chapterNum > 1) {
-    cover = panels[0] || "/covers/webtoons/solo-leveling-cover.jpg";
-  }
-
-  return { panels, cover, hash };
+  // 5. ALL OTHER TITLES: STRICTLY use the title's OWN authentic artwork!
+  // NEVER inject or slice panels from Solo Leveling, TBATE, or other manhwas!
+  const cover = getOfficialCover(webtoonId).cover;
+  const hash = generateContentHash(normId, chapterNum, [cover]);
+  return { panels: [cover], cover, hash };
 }
 
 // Helper to generate full chapter backlog programmatically with deterministic high-quality data
@@ -236,162 +194,144 @@ function generateFullChapterBacklog(
   return sanitized;
 }
 
-// Master Cached Full Chapters Repository
-const CHAPTERS_DATABASE: Record<string, DetailedWebtoonChapter[]> = {
-  "wt-solo-leveling": generateFullChapterBacklog(
-    "solo-leveling",
-    300,
-    (num, arc) => {
-      if (num === 1) return "Capítulo 1 — O Caçador Mais Fraco da Humanidade";
-      if (num === 2) return "Capítulo 2 — Os Três Mandamentos de Cártem";
-      if (num === 3) return "Capítulo 3 — O Sacrifício e o Despertar do Jogador";
-      if (num === 10) return "Capítulo 10 — A Missão Diária de Sobrevivência";
-      if (num === 27) return "Capítulo 27 — O Submarino de Sombras Desperta";
-      if (num === 60) return "Capítulo 60 — A Fera do Portão Vermelho: Baruka";
-      if (num === 100) return "Capítulo 100 — O Início da Incursão à Ilha de Jeju";
-      if (num === 105) return "Capítulo 105 — 'Erga-se': O Nascimento de Beru";
-      if (num === 135) return "Capítulo 135 — O Confronto com o Arquiteto do Sistema";
-      if (num === 166) return "Capítulo 166 — A Morte do Jogador e o Monarca das Sombras";
-      if (num === 179) return "Capítulo 179 — O Adeus da Terra e a Linha do Tempo Reescrita";
-      if (num === 200) return "Capítulo 200 — A Taça da Reencarnação e a Paz Conquistada";
-      if (num > 200) return `Capítulo ${num} — Solo Leveling: Ragnarok & Histórias Paralelas (Pt. ${num - 200})`;
-      return `Capítulo ${num} — ${arc}`;
+// Master Cached Real Chapters Repository — STRICTLY REAL SCANNED PANELS ONLY!
+// Never generates ghost chapters with repeated covers or missing pages!
+const REAL_CHAPTERS_DATABASE: Record<string, DetailedWebtoonChapter[]> = {
+  "wt-solo-leveling": [
+    {
+      id: "wt-solo-leveling-ep-1",
+      webtoon_id: "wt-solo-leveling",
+      number: 1,
+      title: "Capítulo 1 — O Caçador Mais Fraco da Humanidade",
+      arc: "Prólogo & O Templo de Cártem",
+      synopsis: "Sung Jinwoo e sua equipe de rank D entram em uma masmorra dupla que esconde estátuas titânicas com intenções assassinas.",
+      cover: SOLO_EP1_PAGES[0],
+      release_date: "2018-03-04T00:00:00Z",
+      views: 184500,
+      likes: 29400,
+      panels_count: SOLO_EP1_PAGES.length,
+      panels: SOLO_EP1_PAGES,
+      is_free: true,
     },
-    SOLO_LEVELING_ARCS,
-    new Date("2018-03-04T00:00:00Z")
-  ),
+    {
+      id: "wt-solo-leveling-ep-2",
+      webtoon_id: "wt-solo-leveling",
+      number: 2,
+      title: "Capítulo 2 — Os Três Mandamentos de Cártem",
+      arc: "Prólogo & O Templo de Cártem",
+      synopsis: "A estátua divina acorda com olhos carmesim e massacre implacável. Jinwoo descobre as regras de sobrevivência escritas no templo.",
+      cover: SOLO_EP2_PAGES[0],
+      release_date: "2018-03-11T00:00:00Z",
+      views: 162100,
+      likes: 26100,
+      panels_count: SOLO_EP2_PAGES.length,
+      panels: SOLO_EP2_PAGES,
+      is_free: true,
+    },
+    {
+      id: "wt-solo-leveling-ep-3",
+      webtoon_id: "wt-solo-leveling",
+      number: 3,
+      title: "Capítulo 3 — O Sacrifício e o Despertar do Jogador",
+      arc: "O Despertar do Jogador",
+      synopsis: "Abandonado à beira da morte no altar ardente, a notificação enigmática surge diante de seus olhos: 'Você se qualificou como Jogador'.",
+      cover: SOLO_EP3_PAGES[0],
+      release_date: "2018-03-18T00:00:00Z",
+      views: 154900,
+      likes: 25300,
+      panels_count: SOLO_EP3_PAGES.length,
+      panels: SOLO_EP3_PAGES,
+      is_free: true,
+    },
+  ],
 
-  "wt-omniscient-reader": generateFullChapterBacklog(
-    "omniscient-reader",
-    230,
-    (num, arc) => {
-      if (num === 1) return "Capítulo 1 — Prólogo do Fim do Mundo";
-      if (num === 2) return "Capítulo 2 — Iniciando o Serviço Pago";
-      if (num === 3) return "Capítulo 3 — O Contrato com a Constelação";
-      if (num === 50) return "Capítulo 50 — O Rei Sem Trono de Seul";
-      if (num === 100) return "Capítulo 100 — O Sacrifício de Kim Dokja";
-      if (num === 150) return "Capítulo 150 — O 73º Rei Demônio Desperta";
-      if (num === 200) return "Capítulo 200 — A Fábula da Eternidade";
-      return `Capítulo ${num} — ${arc}`;
+  "wt-omniscient-reader": [
+    {
+      id: "wt-omniscient-reader-ep-1",
+      webtoon_id: "wt-omniscient-reader",
+      number: 1,
+      title: "Capítulo 1 — Prólogo do Fim do Mundo",
+      arc: "O Início dos Cenários de Seul",
+      synopsis: "Kim Dokja lê o último capítulo da webnovel 'Três Maneiras de Sobreviver ao Apocalipse' no metrô de Seul. Quando a história acaba, o dokkaebi Bihyung surge e o apocalipse começa.",
+      cover: ORV_EP1_PAGES[0],
+      release_date: "2020-05-26T00:00:00Z",
+      views: 142000,
+      likes: 22800,
+      panels_count: ORV_EP1_PAGES.length,
+      panels: ORV_EP1_PAGES,
+      is_free: true,
     },
-    ORV_ARCS,
-    new Date("2020-05-26T00:00:00Z")
-  ),
+    {
+      id: "wt-omniscient-reader-ep-2",
+      webtoon_id: "wt-omniscient-reader",
+      number: 2,
+      title: "Capítulo 2 — Iniciando o Serviço Pago",
+      arc: "O Início dos Cenários de Seul",
+      synopsis: "O primeiro cenário principal exige assassinar pelo menos uma criatura viva em 30 minutos. Dokja usa seu conhecimento enciclopédico da novel para salvar passageiros sem se corromper.",
+      cover: ORV_EP2_PAGES[0],
+      release_date: "2020-06-02T00:00:00Z",
+      views: 128400,
+      likes: 20100,
+      panels_count: ORV_EP2_PAGES.length,
+      panels: ORV_EP2_PAGES,
+      is_free: true,
+    },
+  ],
 
-  "wt-tower-of-god": generateFullChapterBacklog(
-    "tower-of-god",
-    550,
-    (num, arc) => {
-      if (num === 1) return "Capítulo 1 — O 1º Andar de Headon";
-      if (num === 2) return "Capítulo 2 — A Enguia de Aço e a Lâmina Negra";
-      if (num === 78) return "Capítulo 78 — A Queda de Bam e a Traição de Rachel";
-      if (num === 79) return "Capítulo 79 — O Retorno do Assassino da FUG";
-      if (num === 200) return "Capítulo 200 — O Expresso do Inferno";
-      if (num === 300) return "Capítulo 300 — O Andar da Morte e o Segredo de Arlene";
-      if (num === 450) return "Capítulo 450 — A Grande Batalha do Ninho";
-      return `Capítulo ${num} — ${arc}`;
+  "wt-the-beginning-after-the-end": [
+    {
+      id: "wt-the-beginning-after-the-end-ep-1",
+      webtoon_id: "wt-the-beginning-after-the-end",
+      number: 1,
+      title: "Capítulo 1 — O Despertar da Centelha de Mana",
+      arc: "Infância & Despertar da Mana",
+      synopsis: "O Rei Grey reencarna como o bebê Arthur Leywin no continente mágico de Dicathen, mantendo suas memórias e mestria de sua vida passada para despertar seu núcleo de mana aos quatro anos.",
+      cover: TBATE_ALL_PAGES[0],
+      release_date: "2018-07-07T00:00:00Z",
+      views: 135000,
+      likes: 21500,
+      panels_count: TBATE_ALL_PAGES.length,
+      panels: TBATE_ALL_PAGES,
+      is_free: true,
     },
-    TOG_ARCS,
-    new Date("2010-06-30T00:00:00Z")
-  ),
+  ],
 
-  "wt-nano-machine": generateFullChapterBacklog(
-    "nano-machine",
-    220,
-    (num, arc) => {
-      if (num === 1) return "Capítulo 1 — A Injeção da Nanomáquina";
-      if (num === 2) return "Capítulo 2 — O Reconhecimento dos Meridianos";
-      if (num === 50) return "Capítulo 50 — O Desafio da Academia Demoníaca";
-      if (num === 100) return "Capítulo 100 — O Sucessor do Lorde Celestial";
-      return `Capítulo ${num} — ${arc}`;
+  "wt-nano-machine": [
+    {
+      id: "wt-nano-machine-ep-1",
+      webtoon_id: "wt-nano-machine",
+      number: 1,
+      title: "Capítulo 1 — A Injeção da Nanomáquina",
+      arc: "A Academia do Culto Demoníaco",
+      synopsis: "Cheon Yeo-woon, filho ilegítimo do Lorde do Culto Demoníaco, é emboscado na floresta. Prestes a morrer, um misterioso descendente do futuro aparece e injeta nele uma nanomáquina de 7ª geração.",
+      cover: NANO_ALL_PAGES[0],
+      release_date: "2020-06-10T00:00:00Z",
+      views: 119000,
+      likes: 18400,
+      panels_count: NANO_ALL_PAGES.length,
+      panels: NANO_ALL_PAGES,
+      is_free: true,
     },
-    [
-      { start: 1, end: 50, name: "A Academia do Culto Demoníaco" },
-      { start: 51, end: 120, name: "A Ascensão do Jovem Lorde" },
-      { start: 121, end: 220, name: "A Guerra contra os Seis Clãs" },
-    ],
-    new Date("2020-06-10T00:00:00Z")
-  ),
-
-  "wt-the-beginning-after-the-end": generateFullChapterBacklog(
-    "the-beginning-after-the-end",
-    185,
-    (num, arc) => {
-      if (num === 1) return "Capítulo 1 — O Despertar da Centelha de Mana";
-      if (num === 50) return "Capítulo 50 — O Reino dos Elfos de Elenoir";
-      if (num === 100) return "Capítulo 100 — A Academia de Magos Xyrus";
-      if (num === 150) return "Capítulo 150 — O Início da Guerra de Dicathen";
-      return `Capítulo ${num} — ${arc}`;
-    },
-    [
-      { start: 1, end: 40, name: "Infância & Despertar da Mana" },
-      { start: 41, end: 90, name: "A Floresta dos Elfos & Sylvia" },
-      { start: 91, end: 140, name: "Academia Xyrus & O Ataque" },
-      { start: 141, end: 185, name: "A Guerra dos Continentes" },
-    ],
-    new Date("2018-07-07T00:00:00Z")
-  ),
-
-  "wt-eleceed": generateFullChapterBacklog(
-    "eleceed",
-    310,
-    (num, arc) => {
-      if (num === 1) return "Capítulo 1 — O Gato Gorducho que Desperta";
-      if (num === 50) return "Capítulo 50 — A Velocidade Elétrica de Jiwoo";
-      if (num === 100) return "Capítulo 100 — O Duelo na Academia Shinhwa";
-      if (num === 200) return "Capítulo 200 — O Confronto dos Top 10 Mundiais";
-      return `Capítulo ${num} — ${arc}`;
-    },
-    [
-      { start: 1, end: 60, name: "O Encontro com Kayden & Shinhwa" },
-      { start: 61, end: 150, name: "A Academia Coreana de Despertos" },
-      { start: 151, end: 310, name: "A Batalha contra a World Awakened Academy" },
-    ],
-    new Date("2018-10-02T00:00:00Z")
-  ),
-
-  "wt-wind-breaker": generateFullChapterBacklog(
-    "wind-breaker",
-    480,
-    (num, arc) => {
-      if (num === 1) return "Capítulo 1 — O Vento nas Ruas de Seul";
-      if (num === 100) return "Capítulo 100 — A Liga Hummingbird";
-      if (num === 250) return "Capítulo 250 — O Contrarrelógio da Morte";
-      return `Capítulo ${num} — ${arc}`;
-    },
-    [
-      { start: 1, end: 100, name: "Temporada 1: O Início da Hummingbird" },
-      { start: 101, end: 250, name: "Temporada 2: A Liga Street of Gold" },
-      { start: 251, end: 480, name: "Temporada 3 & 4: A Grande Final" },
-    ],
-    new Date("2013-12-13T00:00:00Z")
-  ),
+  ],
 };
 
-// Fallback dynamic generator for any registered webtoon that lacks static entries
+// Returns strictly genuine chapters with multi-panel scans on disk.
+// For all other titles that do not yet have scan assets, returns empty array.
 export function getFullWebtoonChapters(webtoonId: string): DetailedWebtoonChapter[] {
-  // Normalize ID
+  if (!webtoonId) return [];
   const cleanId = webtoonId.startsWith("wt-") ? webtoonId : `wt-${webtoonId}`;
+  const normId = webtoonId.toLowerCase().replace(/^wt-auto-/, "").replace(/^wt-/, "");
 
-  if (CHAPTERS_DATABASE[cleanId]) {
-    return CHAPTERS_DATABASE[cleanId];
-  }
+  if (REAL_CHAPTERS_DATABASE[cleanId]) return REAL_CHAPTERS_DATABASE[cleanId];
+  if (REAL_CHAPTERS_DATABASE[`wt-${normId}`]) return REAL_CHAPTERS_DATABASE[`wt-${normId}`];
 
-  // Generates 150 standard chapters for any other series automatically
-  const fallback = generateFullChapterBacklog(
-    cleanId.replace("wt-", ""),
-    150,
-    (num, arc) => `Capítulo ${num} — ${arc}`,
-    [
-      { start: 1, end: 50, name: "Fase Inicial & Apresentação" },
-      { start: 51, end: 100, name: "Clímax de Desenvolvimento" },
-      { start: 101, end: 150, name: "A Grande Batalha" },
-    ],
-    new Date("2021-01-01T00:00:00Z")
-  );
+  if (normId.includes("solo-leveling")) return REAL_CHAPTERS_DATABASE["wt-solo-leveling"];
+  if (normId.includes("omniscient-reader") || normId.includes("orv")) return REAL_CHAPTERS_DATABASE["wt-omniscient-reader"];
+  if (normId.includes("beginning-after") || normId.includes("tbate")) return REAL_CHAPTERS_DATABASE["wt-the-beginning-after-the-end"];
+  if (normId.includes("nano-machine")) return REAL_CHAPTERS_DATABASE["wt-nano-machine"];
 
-  CHAPTERS_DATABASE[cleanId] = fallback;
-  return fallback;
+  // Return empty array: no ghost chapters with repeated cover images!
+  return [];
 }
 
 // Server-side cursor and windowed pagination response

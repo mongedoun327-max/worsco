@@ -21,10 +21,17 @@ const WebtoonCard = ({ item, rank }: WebtoonCardProps) => (
           alt={`Capa de ${item.title}`}
           className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
         />
-        <div className="absolute top-3 left-3 bg-card/95 backdrop-blur-sm px-2 py-1 rounded-md flex items-center gap-1">
-          <Sparkles className="h-3 w-3 fill-primary text-primary" />
-          <span className="font-light text-xs">Webtoon</span>
-        </div>
+        {["wt-solo-leveling", "wt-omniscient-reader", "wt-the-beginning-after-the-end", "wt-nano-machine"].includes(item.id) || (item.episode_count && item.episode_count > 0) ? (
+          <div className="absolute top-3 left-3 bg-emerald-600/90 text-white backdrop-blur-sm px-2 py-0.5 rounded-md flex items-center gap-1 shadow-sm">
+            <Sparkles className="h-3 w-3 fill-white text-white" />
+            <span className="font-medium text-[10px] tracking-wide">Scans Completos</span>
+          </div>
+        ) : (
+          <div className="absolute top-3 left-3 bg-black/75 text-zinc-300 backdrop-blur-sm px-2 py-0.5 rounded-md flex items-center gap-1 border border-white/10 shadow-sm">
+            <BookOpen className="h-3 w-3 text-emerald-400" />
+            <span className="font-light text-[10px] tracking-wide">Catálogo Oficial</span>
+          </div>
+        )}
         {typeof rank === "number" && (
           <span className="absolute bottom-2 right-3 text-6xl font-light leading-none text-card/80 drop-shadow-[0_2px_8px_hsl(0_0%_0%/0.45)]">
             {rank}
@@ -41,9 +48,15 @@ const WebtoonCard = ({ item, rank }: WebtoonCardProps) => (
           <span className="text-[10px] uppercase tracking-wide px-2 py-1 bg-accent text-accent-foreground rounded-sm font-light">
             {item.category}
           </span>
-          <span className="text-[10px] uppercase tracking-wide px-2 py-1 bg-accent text-accent-foreground rounded-sm font-light">
-            Leitura online
-          </span>
+          {["wt-solo-leveling", "wt-omniscient-reader", "wt-the-beginning-after-the-end", "wt-nano-machine"].includes(item.id) || (item.episode_count && item.episode_count > 0) ? (
+            <span className="text-[10px] uppercase tracking-wide px-2 py-1 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 rounded-sm font-medium border border-emerald-500/20">
+              ⚡ Leitura Imediata
+            </span>
+          ) : (
+            <span className="text-[10px] uppercase tracking-wide px-2 py-1 bg-accent text-accent-foreground rounded-sm font-light">
+              Acervo 300+ Obras
+            </span>
+          )}
         </div>
         <div className="flex items-center justify-between">
           <div>

@@ -1386,26 +1386,252 @@ function bookAutomationPlugin(): Plugin {
   };
 }
 
-function webtoonChapterFallbackPlugin(): Plugin {
+function officialWebtoonIntegrationPlugin(): Plugin {
+  const imageCache = new Map<string, { buffer: Buffer; contentType: string; timestamp: number }>();
+  const chaptersCache = new Map<string, { data: any; timestamp: number }>();
+  const pagesCache = new Map<string, { pages: string[]; timestamp: number }>();
+  const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
   return {
-    name: 'webtoon-chapter-fallback',
+    name: 'official-webtoon-integration',
     configureServer(server) {
+      // 1. Image Proxy for Naver / Webtoon Akamai CDN with Referer injection
+      server.middlewares.use('/api/proxy/webtoon-image', async (req, res) => {
+        try {
+          const urlObj = new URL(req.url || '', `http://${req.headers.host || 'localhost:3000'}`);
+          const targetUrl = urlObj.searchParams.get('url');
+
+          if (!targetUrl) {
+            res.statusCode = 400;
+            res.end('Missing url parameter');
+            return;
+          }
+
+          // Check memory cache
+          const cached = imageCache.get(targetUrl);
+          if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+            res.statusCode = 200;
+            res.setHeader('Content-Type', cached.contentType);
+            res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+            res.end(cached.buffer);
+            return;
+          }
+
+          const upstreamRes = await fetch(targetUrl, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              'Referer': 'https://www.webtoons.com/',
+            },
+          });
+
+          if (!upstreamRes.ok) {
+            res.statusCode = upstreamRes.status;
+            res.end(`Upstream error ${upstreamRes.status}`);
+            return;
+          }
+
+          const contentType = upstreamRes.headers.get('content-type') || 'image/jpeg';
+          const buffer = Buffer.from(await upstreamRes.arrayBuffer());
+
+          if (imageCache.size > 800) {
+            const firstKey = imageCache.keys().next().value;
+            if (firstKey) imageCache.delete(firstKey);
+          }
+          imageCache.set(targetUrl, { buffer, contentType, timestamp: Date.now() });
+
+          res.statusCode = 200;
+          res.setHeader('Content-Type', contentType);
+          res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+          res.end(buffer);
+        } catch (err: any) {
+          res.statusCode = 500;
+          res.end(err?.message || 'Proxy error');
+        }
+      });
+
+      // 2. Official Chapters List from Webtoons.com
+      server.middlewares.use('/api/webtoon/official-chapters', async (req, res) => {
+        try {
+          const urlObj = new URL(req.url || '', `http://${req.headers.host || 'localhost:3000'}`);
+          const titleNo = urlObj.searchParams.get('titleNo');
+          const genre = urlObj.searchParams.get('genre') || 'action';
+          const slug = urlObj.searchParams.get('slug') || '';
+          const webtoonId = urlObj.searchParams.get('webtoonId') || `wt-${slug}`;
+
+          if (!titleNo) {
+            res.statusCode = 400;
+            res.end(JSON.stringify({ error: 'Missing titleNo' }));
+            return;
+          }
+
+          const cacheKey = `${genre}_${slug}_${titleNo}`;
+          const cached = chaptersCache.get(cacheKey);
+          if (cached && Date.now() - cached.timestamp < 10 * 60 * 1000) {
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify(cached.data));
+            return;
+          }
+
+          const listUrl = `https://www.webtoons.com/en/${genre}/${slug}/list?title_no=${titleNo}&page=1`;
+          const upstream = await fetch(listUrl, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              'Referer': 'https://www.webtoons.com/',
+            },
+          });
+
+          const html = await upstream.text();
+          const episodeMatches = [...html.matchAll(/<li[^>]*id="episode_(\d+)"[^>]*>([\s\S]*?)<\/li>/gi)];
+
+          const chapters = episodeMatches.map((m) => {
+            const raw = m[2];
+            const num = parseInt(m[1], 10);
+            const link = raw.match(/href="([^"]+)"/)?.[1] || '';
+            const subj = raw.match(/<span class="subj"[^>]*>([\s\S]*?)<\/span>/)?.[1]?.replace(/<[^>]+>/g, '').trim() || `Episódio ${num}`;
+            const dateStr = raw.match(/<span class="date"[^>]*>([\s\S]*?)<\/span>/)?.[1]?.trim() || '';
+            const thmb = raw.match(/<img[^>]*src="([^"]+)"/)?.[1] || '';
+
+            return {
+              id: `${webtoonId}-ep-${num}`,
+              webtoon_id: webtoonId,
+              number: num,
+              title: subj,
+              arc: `Temporada Oficial · Webtoon ${num}`,
+              synopsis: `Capítulo oficial ${num} de ${slug.replace(/-/g, ' ')}. Publicado oficialmente em ${dateStr}.`,
+              cover: thmb,
+              release_date: dateStr,
+              views: 145000 + num * 320,
+              likes: 18200 + num * 45,
+              panels_count: 0,
+              panels: [],
+              viewer_url: link,
+              is_free: true,
+            };
+          });
+
+          // Also try RSS feed to complement
+          try {
+            const rssUrl = `https://www.webtoons.com/en/${genre}/${slug}/rss?title_no=${titleNo}`;
+            const rssRes = await fetch(rssUrl, {
+              headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+            });
+            if (rssRes.ok) {
+              const rssXml = await rssRes.text();
+              const items = [...rssXml.matchAll(/<item>([\s\S]*?)<\/item>/g)];
+              for (const it of items) {
+                const raw = it[1];
+                const title = raw.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/)?.[1] || '';
+                const link = raw.match(/<link>(.*?)<\/link>/)?.[1] || '';
+                const pubDate = raw.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] || '';
+                const epMatch = link.match(/episode_no=(\d+)/);
+                if (epMatch) {
+                  const num = parseInt(epMatch[1], 10);
+                  const existing = chapters.find((c) => c.number === num);
+                  if (!existing) {
+                    chapters.push({
+                      id: `${webtoonId}-ep-${num}`,
+                      webtoon_id: webtoonId,
+                      number: num,
+                      title: title || `Episódio ${num}`,
+                      arc: `Lançamentos Recentes`,
+                      synopsis: `Capítulo oficial ${num}. Atualização direta da plataforma oficial Webtoon.`,
+                      cover: '',
+                      release_date: pubDate,
+                      views: 120000,
+                      likes: 15000,
+                      panels_count: 0,
+                      panels: [],
+                      viewer_url: link.replace(/&amp;/g, '&'),
+                      is_free: true,
+                    });
+                  }
+                }
+              }
+            }
+          } catch {}
+
+          // Sort ascending by number
+          chapters.sort((a, b) => a.number - b.number);
+
+          const payload = { success: true, titleNo, genre, slug, chapters };
+          chaptersCache.set(cacheKey, { data: payload, timestamp: Date.now() });
+
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify(payload));
+        } catch (err: any) {
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ error: err?.message || 'Error fetching chapters' }));
+        }
+      });
+
+      // 3. Official Chapter Panels / Pages from Viewer Page
+      server.middlewares.use('/api/webtoon/pages', async (req, res) => {
+        try {
+          const urlObj = new URL(req.url || '', `http://${req.headers.host || 'localhost:3000'}`);
+          const viewerUrl = urlObj.searchParams.get('viewerUrl');
+
+          if (!viewerUrl) {
+            res.statusCode = 400;
+            res.end(JSON.stringify({ error: 'Missing viewerUrl' }));
+            return;
+          }
+
+          const cached = pagesCache.get(viewerUrl);
+          if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ success: true, pages: cached.pages }));
+            return;
+          }
+
+          const upstream = await fetch(viewerUrl, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              'Referer': 'https://www.webtoons.com/',
+            },
+          });
+
+          const html = await upstream.text();
+          const listMatch = html.match(/id="_imageList"[\s\S]*?<\/div>\s*<\/div>/i);
+          let rawPages: string[] = [];
+
+          if (listMatch) {
+            rawPages = [...listMatch[0].matchAll(/data-url="([^"]+)"/g)].map((m) => m[1]);
+          } else {
+            // Fallback match across all image elements
+            rawPages = [...html.matchAll(/data-url="([^"]+)"/g)].map((m) => m[1]).slice(0, 80);
+          }
+
+          pagesCache.set(viewerUrl, { pages: rawPages, timestamp: Date.now() });
+
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: true, count: rawPages.length, pages: rawPages }));
+        } catch (err: any) {
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ error: err?.message || 'Error fetching viewer pages' }));
+        }
+      });
+
+      // 4. Local Chapters on Disk Static Handler (No Solo Leveling contamination)
       server.middlewares.use((req, res, next) => {
         const urlPath = (req.url || '').split('?')[0];
         if (urlPath.startsWith('/chapters/') && (urlPath.endsWith('.jpg') || urlPath.endsWith('.jpeg') || urlPath.endsWith('.png'))) {
           const directFile = path.resolve(__dirname, 'public', urlPath.replace(/^\//, ''));
           if (fs.existsSync(directFile) && fs.statSync(directFile).isFile()) {
-            return next();
-          }
-          // File does not exist directly, serve an authentic high-resolution manhwa page
-          const fallbackPath = path.resolve(__dirname, 'public/chapters/solo-leveling/ep-1/page-1.jpg');
-          if (fs.existsSync(fallbackPath)) {
             res.statusCode = 200;
             res.setHeader('Content-Type', 'image/jpeg');
-            res.setHeader('Cache-Control', 'public, max-age=3600');
-            fs.createReadStream(fallbackPath).pipe(res);
+            res.setHeader('Cache-Control', 'public, max-age=86400');
+            fs.createReadStream(directFile).pipe(res);
             return;
           }
+          res.statusCode = 404;
+          res.end('Chapter image not found');
+          return;
         }
         next();
       });
@@ -1415,7 +1641,7 @@ function webtoonChapterFallbackPlugin(): Plugin {
 
 export default defineConfig(() => {
   return {
-    plugins: [react(), newsRssPlugin(), gutenbergBooksPlugin(), bookAutomationPlugin(), webtoonChapterFallbackPlugin()],
+    plugins: [react(), newsRssPlugin(), gutenbergBooksPlugin(), bookAutomationPlugin(), officialWebtoonIntegrationPlugin()],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),

@@ -49,6 +49,7 @@ export type Episode = {
   story_beats?: any[];
   is_free: boolean;
   published_at: string;
+  viewer_url?: string;
 };
 
 export const CONTENT_LABELS: Record<ContentType, string> = {
@@ -549,42 +550,40 @@ export const useContent = (id?: string) =>
       }
 
       // Check Curated Webtoons
-      if (id.startsWith("wt-") || id.startsWith("solo-") || id.startsWith("omniscient-") || id.startsWith("tower-") || id.startsWith("nano-") || id.startsWith("lore-") || id.startsWith("eleceed-") || id.startsWith("wind-")) {
-        try {
-          const { getWebtoonById } = await import("@/lib/webtoons");
-          const found = getWebtoonById(id);
-          if (found) {
-            return {
-              id: found.id,
-              type: "webtoon" as ContentType,
-              title: found.title,
-              subtitle: `${found.status} · ${found.release_day}`,
-              description: found.description,
-              body: found.description,
-              author: `${found.author} / ${found.artist}`,
-              tags: [...found.genres, found.release_day, found.status],
-              category: found.genres[0] || "Ação",
-              slug: found.slug,
-              cover: found.cover,
-              rating: found.rating,
-              rating_count: found.rating_count,
-              formats: ["Tira Vertical", "Webtoon"],
-              language: "pt",
-              year: 2026,
-              size: `${found.episodes_count} Episódios`,
-              views: found.views,
-              read_time: 15,
-              episode_count: found.episodes_count,
-              price_cents: 0,
-              currency: "BRL",
-              published: true,
-              featured: !!found.featured,
-              collection: found.collection || "Webtoons em Destaque",
-              created_at: new Date().toISOString(),
-            } as Content;
-          }
-        } catch {}
-      }
+      try {
+        const { getWebtoonById } = await import("@/lib/webtoons");
+        const found = getWebtoonById(id);
+        if (found) {
+          return {
+            id: found.id,
+            type: "webtoon" as ContentType,
+            title: found.title,
+            subtitle: `${found.status} · ${found.release_day}`,
+            description: found.description,
+            body: found.description,
+            author: `${found.author} / ${found.artist}`,
+            tags: [...found.genres, found.release_day, found.status],
+            category: found.genres[0] || "Ação",
+            slug: found.slug,
+            cover: found.cover,
+            rating: found.rating,
+            rating_count: found.rating_count,
+            formats: ["Tira Vertical", "Webtoon"],
+            language: "pt",
+            year: 2026,
+            size: `${found.episodes_count} Episódios`,
+            views: found.views,
+            read_time: 15,
+            episode_count: found.episodes_count,
+            price_cents: 0,
+            currency: "BRL",
+            published: true,
+            featured: !!found.featured,
+            collection: found.collection || "Webtoons em Destaque",
+            created_at: new Date().toISOString(),
+          } as Content;
+        }
+      } catch {}
 
       try {
         const { data, error } = await supabase
@@ -646,24 +645,55 @@ export const useEpisodes = (contentId?: string) =>
         } catch {}
       }
 
-      // Check Curated Webtoon episodes
-      if (contentId.startsWith("wt-") || contentId.startsWith("solo-") || contentId.startsWith("omniscient-") || contentId.startsWith("tower-") || contentId.startsWith("nano-") || contentId.startsWith("lore-") || contentId.startsWith("eleceed-") || contentId.startsWith("wind-")) {
-        try {
-          const { getWebtoonById } = await import("@/lib/webtoons");
-          const found = getWebtoonById(contentId);
-          if (found && found.episodes) {
-            return found.episodes.map((ep) => ({
-              id: ep.id,
+      // Check Curated Webtoon episodes & live WEBTOON official synchronization
+      try {
+        const { getWebtoonById } = await import("@/lib/webtoons");
+        const found = getWebtoonById(contentId);
+        const baseEpisodes = found?.episodes || [];
+
+        // Also query live official WEBTOON sync
+        const { syncOfficialWebtoonChapters } = await import("@/lib/webtoonOfficialSync");
+        const liveChapters = await syncOfficialWebtoonChapters(contentId);
+
+        const mergedMap = new Map<number, Episode>();
+
+        // 1. Base local chapters (e.g. Solo Leveling 1-3, ORV 1-2, TBATE 1, Nano Machine 1)
+        for (const ep of baseEpisodes) {
+          mergedMap.set(ep.number, {
+            id: ep.id,
+            content_id: contentId,
+            number: ep.number,
+            title: ep.title,
+            body: ep.synopsis,
+            images: ep.panels,
+            is_free: ep.is_free,
+            published_at: ep.release_date,
+            viewer_url: (ep as any).viewer_url,
+          });
+        }
+
+        // 2. Official WEBTOON live chapters (Tower of God, Eleceed, Mount Hua, ORV, Lore Olympus, etc.)
+        for (const ch of liveChapters) {
+          if (!mergedMap.has(ch.number)) {
+            mergedMap.set(ch.number, {
+              id: ch.id,
               content_id: contentId,
-              number: ep.number,
-              title: ep.title,
-              body: ep.synopsis,
-              images: ep.panels,
-              is_free: ep.is_free,
-              published_at: ep.release_date,
-            })) as Episode[];
+              number: ch.number,
+              title: ch.title,
+              body: ch.synopsis || "",
+              images: ch.panels || [],
+              is_free: ch.is_free,
+              published_at: ch.release_date,
+              viewer_url: ch.viewer_url,
+            });
           }
-        } catch {}
+        }
+
+        if (mergedMap.size > 0) {
+          return Array.from(mergedMap.values()).sort((a, b) => a.number - b.number);
+        }
+      } catch (err) {
+        console.warn("[useEpisodes] Webtoon sync issue:", err);
       }
 
       if (contentId.startsWith("guten-") || /^\d+$/.test(contentId)) {

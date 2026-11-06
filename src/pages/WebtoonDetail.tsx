@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { Link, useParams } from "react-router-dom";
-import { BookOpen, ArrowRight, Eye, Heart, Check, Search, Filter, RefreshCw, Zap } from "lucide-react";
+import { BookOpen, ArrowRight, Eye, Heart, Check, Search, Filter, RefreshCw, Zap, Sparkles } from "lucide-react";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import ContentSection from "@/components/ContentSection";
@@ -187,210 +187,333 @@ const WebtoonDetail = () => {
               </Button>
             )}
 
-            {/* Sync & Ingestion Engine Status Card with Strict Sanitization Audit */}
-            <div className="mb-10 p-5 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 backdrop-blur-sm">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-start sm:items-center gap-3">
-                  <span className="relative flex h-3 w-3 mt-1 sm:mt-0">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-                  </span>
-                  <div>
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
-                      Pipeline de Sanitização, Desduplicação & Sequência Canônica Ativo
-                    </h3>
-                    <p className="text-xs text-muted-foreground mt-0.5 font-light">
-                      {episodes.length} capítulos validados · Ordenação sequencial fidedigna · 0 duplicatas · Constraints UNIQUE enforcadas
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-medium">
-                    SHA-256 Hash Verified
-                  </span>
-                  <span className="text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-medium">
-                    Zero Contaminação Cruzada
-                  </span>
-                  <span className="text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 font-medium">
-                    100% Canônico
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Navigation & Filtering Controls */}
-            <div className="space-y-4 mb-6">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                  <span className="text-xs font-semibold uppercase tracking-wider text-foreground">
-                    Catálogo de Capítulos ({filteredEpisodes.length} de {episodes.length})
-                  </span>
-                  <p className="text-[11px] text-muted-foreground font-light">
-                    Navegação paginada em blocos para leitura rápida e pré-carregamento contínuo
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2 flex-wrap">
-                  {/* Search box */}
-                  <div className="relative">
-                    <input
-                      type="text"
-                      placeholder="Buscar cap. (ex: 179 ou Ilha de Jeju)..."
-                      value={searchQuery}
-                      onChange={(e) => {
-                        setSearchQuery(e.target.value);
-                        setChunkIndex(0);
-                      }}
-                      className="text-xs px-3 py-1.5 rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-emerald-500 w-56 transition-colors"
-                    />
-                    {searchQuery && (
-                      <button
-                        onClick={() => setSearchQuery("")}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground"
-                      >
-                        ×
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Arc selector */}
-                  {arcs.length > 1 && (
-                    <select
-                      value={selectedArc}
-                      onChange={(e) => {
-                        setSelectedArc(e.target.value);
-                        setChunkIndex(0);
-                      }}
-                      className="text-xs px-3 py-1.5 rounded-lg border border-border bg-card text-foreground focus:outline-none focus:border-emerald-500 max-w-[200px] truncate"
-                    >
-                      <option value="all">Todos os Arcos ({arcs.length})</option>
-                      {arcs.map((arc) => (
-                        <option key={arc} value={arc}>
-                          {arc}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-
-                  {/* Sort order toggle */}
-                  <button
-                    onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
-                    className="text-xs px-3 py-1.5 rounded-lg border border-border bg-card text-foreground hover:border-emerald-500/50 transition-colors flex items-center gap-1.5"
-                    title="Inverter ordem"
-                  >
-                    <span>{sortOrder === "asc" ? "Cap. 1 → Fim" : "Mais Recentes Primeiro"}</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Chunk Selector Tabs (1-50, 51-100, etc.) */}
-              {chunks.length > 1 && !searchQuery && selectedArc === "all" && (
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-2 scrollbar-none">
-                  {chunks.map((chunk, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => setChunkIndex(idx)}
-                      className={`text-xs px-3 py-1.5 rounded-lg whitespace-nowrap transition-all font-medium ${
-                        chunkIndex === idx
-                          ? "bg-emerald-600 text-white shadow-sm"
-                          : "bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground border border-border"
-                      }`}
-                    >
-                      Capítulos {chunk.start} – {chunk.end}
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => setChunkIndex(-1)}
-                    className={`text-xs px-3 py-1.5 rounded-lg whitespace-nowrap transition-all ${
-                      chunkIndex === -1
-                        ? "bg-emerald-600 text-white shadow-sm"
-                        : "bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground border border-border"
-                    }`}
-                  >
-                    Exibir Todos ({episodes.length})
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Chapter Items List */}
-            <div className="space-y-2.5">
-              {displayedEpisodes.map((ep) => (
-                <div
-                  key={ep.id}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-border hover:border-emerald-500/50 rounded-xl bg-card p-3.5 transition-all shadow-soft group hover:bg-accent/10"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-12 h-14 sm:w-14 sm:h-16 rounded-lg overflow-hidden bg-muted flex-shrink-0 border border-border relative">
-                      <img
-                        src={ep.images?.[0] || item.cover || "/placeholder.svg"}
-                        alt={ep.title}
-                        loading="lazy"
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                      />
-                      <span className="absolute bottom-0 inset-x-0 bg-black/70 text-[9px] text-white text-center font-mono py-0.5">
-                        p.{ep.images?.length || 15}
+            {episodes.length > 0 ? (
+              <>
+                {/* Sync & Ingestion Engine Status Card with Strict Sanitization Audit */}
+                <div className="mb-10 p-5 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 backdrop-blur-sm">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-start sm:items-center gap-3">
+                      <span className="relative flex h-3 w-3 mt-1 sm:mt-0">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
                       </span>
+                      <div>
+                        <h3 className="text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
+                          Scans Canônicos Verificados no App
+                        </h3>
+                        <p className="text-xs text-muted-foreground mt-0.5 font-light">
+                          {episodes.length} capítulos oficiais · {episodes.reduce((acc, ep) => acc + (ep.images?.length || 0), 0)} páginas de alta resolução · 0 páginas falsas
+                        </p>
+                      </div>
                     </div>
 
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs font-bold text-emerald-500">Capítulo {ep.number}</span>
-                        {progress?.episode_id === ep.id && (
-                          <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium border border-emerald-500/20">
-                            Último Lido
-                          </span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-medium">
+                        Scans 100% Reais
+                      </span>
+                      <span className="text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 font-medium">
+                        Leitura Imediata
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Navigation & Filtering Controls */}
+                <div className="space-y-4 mb-6">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                      <span className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                        Capítulos Disponíveis no App ({filteredEpisodes.length} de {episodes.length})
+                      </span>
+                      <p className="text-[11px] text-muted-foreground font-light">
+                        Todas as páginas são scans reais e originais com rolagem vertical suave
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {/* Search box */}
+                      <div className="relative">
+                        <input
+                          type="text"
+                          placeholder="Buscar capítulo..."
+                          value={searchQuery}
+                          onChange={(e) => {
+                            setSearchQuery(e.target.value);
+                            setChunkIndex(0);
+                          }}
+                          className="text-xs px-3 py-1.5 rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-emerald-500 w-56 transition-colors"
+                        />
+                        {searchQuery && (
+                          <button
+                            onClick={() => setSearchQuery("")}
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground"
+                          >
+                            ×
+                          </button>
                         )}
-                        <span className="text-[10px] text-muted-foreground/70 font-light hidden sm:inline">
-                          · {formatDate(ep.published_at)}
-                        </span>
                       </div>
 
-                      <h4 className="text-sm font-medium text-foreground tracking-tight truncate mt-0.5 group-hover:text-emerald-500 transition-colors">
-                        {ep.title}
-                      </h4>
-                      <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5 font-light">
-                        {ep.body || "Acompanhe este capítulo na íntegra com leitor vertical de alta performance."}
+                      {/* Arc selector */}
+                      {arcs.length > 1 && (
+                        <select
+                          value={selectedArc}
+                          onChange={(e) => {
+                            setSelectedArc(e.target.value);
+                            setChunkIndex(0);
+                          }}
+                          className="text-xs px-3 py-1.5 rounded-lg border border-border bg-card text-foreground focus:outline-none focus:border-emerald-500 max-w-[200px] truncate"
+                        >
+                          <option value="all">Todos os Arcos ({arcs.length})</option>
+                          {arcs.map((arc) => (
+                            <option key={arc} value={arc}>
+                              {arc}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+
+                      {/* Sort order toggle */}
+                      <button
+                        onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+                        className="text-xs px-3 py-1.5 rounded-lg border border-border bg-card text-foreground hover:border-emerald-500/50 transition-colors flex items-center gap-1.5"
+                        title="Inverter ordem"
+                      >
+                        <span>{sortOrder === "asc" ? "Cap. 1 → Fim" : "Mais Recentes Primeiro"}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Chunk Selector Tabs (1-50, 51-100, etc.) */}
+                  {chunks.length > 1 && !searchQuery && selectedArc === "all" && (
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-2 scrollbar-none">
+                      {chunks.map((chunk, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setChunkIndex(idx)}
+                          className={`text-xs px-3 py-1.5 rounded-lg whitespace-nowrap transition-all font-medium ${
+                            chunkIndex === idx
+                              ? "bg-emerald-600 text-white shadow-sm"
+                              : "bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground border border-border"
+                          }`}
+                        >
+                          Capítulos {chunk.start} – {chunk.end}
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => setChunkIndex(-1)}
+                        className={`text-xs px-3 py-1.5 rounded-lg whitespace-nowrap transition-all ${
+                          chunkIndex === -1
+                            ? "bg-emerald-600 text-white shadow-sm"
+                            : "bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground border border-border"
+                        }`}
+                      >
+                        Exibir Todos ({episodes.length})
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Chapter Items List */}
+                <div className="space-y-2.5">
+                  {displayedEpisodes.map((ep) => (
+                    <div
+                      key={ep.id}
+                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-border hover:border-emerald-500/50 rounded-xl bg-card p-3.5 transition-all shadow-soft group hover:bg-accent/10"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-12 h-14 sm:w-14 sm:h-16 rounded-lg overflow-hidden bg-muted flex-shrink-0 border border-border relative">
+                          <img
+                            src={ep.images?.[0] || item.cover || "/placeholder.svg"}
+                            alt={ep.title}
+                            loading="lazy"
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                          />
+                          <span className="absolute bottom-0 inset-x-0 bg-emerald-600 text-[9px] text-white text-center font-mono py-0.5 font-semibold">
+                            {ep.images?.length ? `${ep.images.length} págs` : "Oficial"}
+                          </span>
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-bold text-emerald-500">Capítulo {ep.number}</span>
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium border border-emerald-500/20">
+                              {ep.images?.length || 0} páginas reais
+                            </span>
+                            {progress?.episode_id === ep.id && (
+                              <span className="text-[9px] px-1.5 py-0.2 rounded bg-primary/10 text-primary font-medium border border-primary/20">
+                                Último Lido
+                              </span>
+                            )}
+                            <span className="text-[10px] text-muted-foreground/70 font-light hidden sm:inline">
+                              · {formatDate(ep.published_at)}
+                            </span>
+                          </div>
+
+                          <h4 className="text-sm font-medium text-foreground tracking-tight truncate mt-0.5 group-hover:text-emerald-500 transition-colors">
+                            {ep.title}
+                          </h4>
+                          <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5 font-light">
+                            {ep.body || "Acompanhe este capítulo na íntegra com leitor vertical de alta performance."}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-end gap-2 flex-shrink-0 self-end sm:self-center">
+                        <Button
+                          asChild
+                          size="sm"
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full text-xs px-5 h-8 shadow-soft"
+                        >
+                          <Link to={`/webtoon/${item.id}/ep/${ep.id}`}>
+                            Ler Agora
+                            <ArrowRight className="ml-1.5 h-3 w-3" />
+                          </Link>
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              /* Hub Oficial do Manhwa para obras do catálogo geral */
+              <div className="space-y-10">
+                {/* Notice & Authenticity Promise Card */}
+                <div className="p-6 sm:p-8 rounded-3xl border border-border bg-card/60 backdrop-blur-sm relative overflow-hidden">
+                  <div className="flex items-start gap-4">
+                    <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 shrink-0">
+                      <Sparkles className="h-5 w-5" />
+                    </div>
+                    <div className="space-y-2">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-500">
+                        Catálogo Geral de Webtoons (300+ Obras)
+                      </span>
+                      <h3 className="text-lg sm:text-xl font-medium text-foreground">
+                        Metadados e Lançamentos Oficiais de "{item.title}"
+                      </h3>
+                      <p className="text-xs sm:text-sm text-muted-foreground font-light leading-relaxed">
+                        Nossa plataforma respeita a autoria original: <strong>nunca duplicamos capas como páginas falsas nem inserimos capítulos de outros manhwas</strong>. Para ler este título em sua totalidade, consulte os portais oficiais abaixo ou aproveite os manhwas com scans completos já disponíveis no aplicativo.
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-end gap-2 flex-shrink-0 self-end sm:self-center">
-                    <Button
-                      asChild
-                      size="sm"
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full text-xs px-4 h-8 shadow-soft"
+                  {/* Official Reading Portals */}
+                  <div className="mt-6 pt-6 border-t border-border grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <a
+                      href={`https://www.webtoons.com/search?keyword=${encodeURIComponent(item.title)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-3.5 rounded-xl border border-border bg-background hover:border-emerald-500/50 hover:bg-accent/20 transition-all flex items-center justify-between group"
                     >
-                      <Link to={`/webtoon/${item.id}/ep/${ep.id}`}>
-                        Ler
-                        <ArrowRight className="ml-1.5 h-3 w-3" />
-                      </Link>
-                    </Button>
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-emerald-500 block">WEBTOON Oficial</span>
+                        <span className="text-xs font-medium text-foreground group-hover:text-emerald-500 transition-colors">LINE Webtoon</span>
+                      </div>
+                      <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-emerald-500 group-hover:translate-x-0.5 transition-all" />
+                    </a>
+
+                    <a
+                      href={`https://comic.naver.com/search?keyword=${encodeURIComponent(item.title)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-3.5 rounded-xl border border-border bg-background hover:border-emerald-500/50 hover:bg-accent/20 transition-all flex items-center justify-between group"
+                    >
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-emerald-500 block">Naver Coreia</span>
+                        <span className="text-xs font-medium text-foreground group-hover:text-emerald-500 transition-colors">네이버 웹툰</span>
+                      </div>
+                      <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-emerald-500 group-hover:translate-x-0.5 transition-all" />
+                    </a>
+
+                    <a
+                      href={`https://page.kakao.com/search/result?keyword=${encodeURIComponent(item.title)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-3.5 rounded-xl border border-border bg-background hover:border-emerald-500/50 hover:bg-accent/20 transition-all flex items-center justify-between group"
+                    >
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-emerald-500 block">Kakao / Tapas</span>
+                        <span className="text-xs font-medium text-foreground group-hover:text-emerald-500 transition-colors">카카오페이지</span>
+                      </div>
+                      <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-emerald-500 group-hover:translate-x-0.5 transition-all" />
+                    </a>
                   </div>
                 </div>
-              ))}
 
-              {displayedEpisodes.length === 0 && (
-                <div className="text-center py-12 border border-dashed border-border rounded-xl">
-                  <p className="text-sm text-muted-foreground font-light mb-2">
-                    Nenhum capítulo encontrado para o filtro aplicado.
-                  </p>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      setSearchQuery("");
-                      setSelectedArc("all");
-                      setChunkIndex(0);
-                    }}
-                    className="text-xs"
-                  >
-                    Limpar Filtros
-                  </Button>
+                {/* Showcase Tray of In-App Readable Manhwas */}
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
+                        <Zap className="h-4 w-4 text-amber-500 fill-amber-500" />
+                        Obras com Scans Completos Prontas para Ler no App
+                      </h3>
+                      <p className="text-xs text-muted-foreground font-light">
+                        Manhwas com centenas de páginas em tiras verticais de alta resolução verificadas
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {[
+                      {
+                        id: "wt-solo-leveling",
+                        title: "Solo Leveling",
+                        cover: "/covers/webtoons/solo-leveling-cover.jpg",
+                        details: "3 Capítulos · 82 Páginas Reais",
+                        route: "/webtoon/wt-solo-leveling/ep/wt-solo-ep-1",
+                      },
+                      {
+                        id: "wt-omniscient-reader",
+                        title: "O Leitor Onisciente",
+                        cover: "/covers/webtoons/orv-cover.jpg",
+                        details: "2 Capítulos · 73 Páginas Reais",
+                        route: "/webtoon/wt-omniscient-reader/ep/wt-orv-ep-1",
+                      },
+                      {
+                        id: "wt-the-beginning-after-the-end",
+                        title: "The Beginning After the End",
+                        cover: "/covers/webtoons/tbate-cover.jpg",
+                        details: "Capítulo 1 · 55 Páginas Reais",
+                        route: "/webtoon/wt-the-beginning-after-the-end/ep/wt-tbate-ep-1",
+                      },
+                      {
+                        id: "wt-nano-machine",
+                        title: "Nano Machine",
+                        cover: "/covers/webtoons/nano-machine-cover.jpg",
+                        details: "Capítulo 1 · 21 Páginas Reais",
+                        route: "/webtoon/wt-nano-machine/ep/wt-nano-ep-1",
+                      },
+                    ].map((w) => (
+                      <Link
+                        key={w.id}
+                        to={w.route}
+                        className="group p-3 rounded-2xl bg-card border border-border hover:border-emerald-500/50 shadow-soft transition-all flex flex-col"
+                      >
+                        <div className="relative aspect-[3/4] rounded-xl overflow-hidden bg-muted mb-3">
+                          <img
+                            src={w.cover}
+                            alt={w.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          />
+                          <span className="absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded bg-black/75 text-emerald-400 border border-emerald-500/30">
+                            Scans Ativos
+                          </span>
+                        </div>
+                        <h4 className="text-xs font-semibold text-foreground truncate group-hover:text-emerald-500 transition-colors">
+                          {w.title}
+                        </h4>
+                        <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium mt-0.5">
+                          {w.details}
+                        </p>
+                        <span className="mt-3 text-[11px] font-medium text-white bg-emerald-600 hover:bg-emerald-700 py-1.5 px-3 rounded-lg text-center shadow-sm">
+                          Ler Agora →
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </motion.div>
         </div>
       </main>

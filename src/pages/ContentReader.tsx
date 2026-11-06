@@ -18,9 +18,17 @@ const ContentReader = () => {
   const track = useTrackInteraction();
   const lastSaved = useRef(0);
 
-  // Automatic redirect to full book reader for any book
+  // Automatic redirect to full book reader for any book, article or textbook
   useEffect(() => {
-    if (id && (item?.type === "book" || id.startsWith("guten-"))) {
+    if (
+      id &&
+      (item?.type === "book" ||
+        id.startsWith("guten-") ||
+        id.startsWith("sci-") ||
+        id.startsWith("curr-") ||
+        id.startsWith("mod-") ||
+        id.startsWith("auto-"))
+    ) {
       navigate(`/ler/${id}`, { replace: true });
     }
   }, [id, item?.type, navigate]);
@@ -177,7 +185,7 @@ const ContentReader = () => {
                       const target = e.currentTarget;
                       if (!target.dataset.hasFailed) {
                         target.dataset.hasFailed = "true";
-                        target.src = `/chapters/solo-leveling/ep-1/page-${(i % 27) + 1}.jpg`;
+                        target.style.display = "none";
                       }
                     }}
                     className="w-full object-cover transition-opacity duration-300"

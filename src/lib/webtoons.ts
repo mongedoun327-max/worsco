@@ -59,6 +59,10 @@ export const WEBTOON_GENRES = [
   "Sci-Fi",
   "Esportes",
   "Drama",
+  "Terror",
+  "Escolar",
+  "Mistério",
+  "Psicológico",
 ];
 
 export const RELEASE_DAYS: Array<{ value: WebtoonDay | "Todos"; label: string; short: string }> = [
@@ -78,7 +82,7 @@ const generatePages = (basePath: string, count: number): string[] => {
   return Array.from({ length: count }, (_, i) => `${basePath}/page-${i + 1}.jpg`);
 };
 
-export const CURATED_WEBTOONS: Webtoon[] = [
+export const BASE_CURATED_WEBTOONS: Webtoon[] = [
   {
     id: "wt-solo-leveling",
     title: "Solo Leveling: ReAwakening",
@@ -291,22 +295,8 @@ export const CURATED_WEBTOONS: Webtoon[] = [
     trending: true,
     weekly_rank: 5,
     collection: "Fantasia Épica",
-    episodes_count: 1,
-    episodes: [
-      {
-        id: "wt-tog-ep-1",
-        webtoon_id: "wt-tower-of-god",
-        number: 1,
-        title: "Capítulo 1 — O Andar de Headon: A Enguia de Aço",
-        synopsis: "O misterioso zelador da Torre propõe a Bam um teste mortal em uma jaula submarina com uma enguia blindada colossal.",
-        cover: "/covers/webtoons/tower-of-god-cover.jpg",
-        release_date: "2026-11-01T00:00:00Z",
-        views: 71000,
-        likes: 11500,
-        panels: ["/covers/webtoons/tower-of-god-cover.jpg"],
-        is_free: true,
-      },
-    ],
+    episodes_count: 0,
+    episodes: [],
   },
   {
     id: "wt-return-mount-hua",
@@ -329,22 +319,8 @@ export const CURATED_WEBTOONS: Webtoon[] = [
     trending: true,
     weekly_rank: 6,
     collection: "Murim & Artes Marciais",
-    episodes_count: 1,
-    episodes: [
-      {
-        id: "wt-mthua-ep-1",
-        webtoon_id: "wt-return-mount-hua",
-        number: 1,
-        title: "Capítulo 1 — O Último Golpe da Flor de Ameixa",
-        synopsis: "No cume da Cordilheira dos Cem Picos, o Santo da Espada Chung Myung desafia o soberano das trevas para o duelo derradeiro.",
-        cover: "/covers/webtoons/mount-hua-cover.jpg",
-        release_date: "2026-11-01T00:00:00Z",
-        views: 69800,
-        likes: 11800,
-        panels: ["/covers/webtoons/mount-hua-cover.jpg"],
-        is_free: true,
-      },
-    ],
+    episodes_count: 0,
+    episodes: [],
   },
   {
     id: "wt-lore-olympus",
@@ -367,22 +343,8 @@ export const CURATED_WEBTOONS: Webtoon[] = [
     trending: true,
     weekly_rank: 7,
     collection: "Romance & Emoção",
-    episodes_count: 1,
-    episodes: [
-      {
-        id: "wt-lo-ep-1",
-        webtoon_id: "wt-lore-olympus",
-        number: 1,
-        title: "Capítulo 1 — A Festa no Palácio dos Deuses",
-        synopsis: "Perséfone estreia nos eventos sociais do Olimpo acompanhada por Artemis e seus olhos se cruzam com o rei das sombras pela primeira vez.",
-        cover: "/covers/webtoons/lore-olympus-cover.jpg",
-        release_date: "2026-11-01T00:00:00Z",
-        views: 67100,
-        likes: 13200,
-        panels: ["/covers/webtoons/lore-olympus-cover.jpg"],
-        is_free: true,
-      },
-    ],
+    episodes_count: 0,
+    episodes: [],
   },
   {
     id: "wt-eleceed",
@@ -405,22 +367,8 @@ export const CURATED_WEBTOONS: Webtoon[] = [
     trending: true,
     weekly_rank: 8,
     collection: "Sistemas & Caçadores",
-    episodes_count: 1,
-    episodes: [
-      {
-        id: "wt-ele-ep-1",
-        webtoon_id: "wt-eleceed",
-        number: 1,
-        title: "Capítulo 1 — O Gato Mais Poderoso do Mundo",
-        synopsis: "Jiwoo encontra um gato corpulento e mal-humorado ferido na chuva, sem desconfiar que se trata do terror supremo das organizações mundiais.",
-        cover: "/covers/webtoons/eleceed-cover.jpg",
-        release_date: "2026-11-01T00:00:00Z",
-        views: 59200,
-        likes: 11200,
-        panels: ["/covers/webtoons/eleceed-cover.jpg"],
-        is_free: true,
-      },
-    ],
+    episodes_count: 0,
+    episodes: [],
   },
   {
     id: "wt-villainess-marionette",
@@ -443,22 +391,8 @@ export const CURATED_WEBTOONS: Webtoon[] = [
     trending: true,
     weekly_rank: 9,
     collection: "Isekai & Realeza",
-    episodes_count: 1,
-    episodes: [
-      {
-        id: "wt-vm-ep-1",
-        webtoon_id: "wt-villainess-marionette",
-        number: 1,
-        title: "Capítulo 1 — O Despertar da Princesa de Porcelana",
-        synopsis: "Cayena abre os olhos em seus aposentos de seda imperial e percebe que retornou antes de seu casamento arranjado mortal.",
-        cover: "/covers/webtoons/villainess-marionette-cover.jpg",
-        release_date: "2026-11-01T00:00:00Z",
-        views: 52400,
-        likes: 9900,
-        panels: ["/covers/webtoons/villainess-marionette-cover.jpg"],
-        is_free: true,
-      },
-    ],
+    episodes_count: 0,
+    episodes: [],
   },
   {
     id: "wt-wind-breaker",
@@ -481,26 +415,61 @@ export const CURATED_WEBTOONS: Webtoon[] = [
     trending: true,
     weekly_rank: 10,
     collection: "Maratonar Obras Completas",
-    episodes_count: 1,
-    episodes: [
-      {
-        id: "wt-wb-ep-1",
-        webtoon_id: "wt-wind-breaker",
-        number: 1,
-        title: "Capítulo 1 — O Desafio na Ladeira da Meia-Noite",
-        synopsis: "Jay desce a curva da morte com sua bicicleta sem freios e deixa os veteranos da Hummingbird boquiabertos com sua técnica de derrapagem.",
-        cover: "/covers/webtoons/wind-breaker-cover.jpg",
-        release_date: "2026-11-01T00:00:00Z",
-        views: 61200,
-        likes: 11500,
-        panels: ["/covers/webtoons/wind-breaker-cover.jpg"],
-        is_free: true,
-      },
-    ],
+    episodes_count: 0,
+    episodes: [],
   },
 ];
 
+import { EXPANDED_WEBTOONS } from "@/data/expandedWebtoons";
 import { getFullWebtoonChapters } from "./webtoonSyncEngine";
+import { getOfficialCover } from "./webtoonCovers";
+
+// Apply authentic official covers to base webtoons
+const normalizedBaseCurated: Webtoon[] = BASE_CURATED_WEBTOONS.map((w) => {
+  const official = getOfficialCover(w.id, w.slug, w.cover);
+  return {
+    ...w,
+    cover: official.cover,
+    banner: official.banner,
+    korean_title: official.korean_title || w.korean_title,
+  };
+});
+
+// Map expanded items to Webtoon interface with authentic official covers
+const mappedExpandedWebtoons: Webtoon[] = EXPANDED_WEBTOONS.map((e) => {
+  const official = getOfficialCover(e.id, e.slug, e.cover);
+  const resolvedCover = official.cover;
+  const resolvedBanner = official.banner;
+  const resolvedKorean = official.korean_title || e.korean_title;
+  return {
+    id: e.id,
+    title: e.title,
+    korean_title: resolvedKorean,
+    slug: e.slug,
+    author: e.author,
+    artist: e.artist,
+    description: e.description,
+    cover: resolvedCover,
+    banner: resolvedBanner,
+    rating: e.rating,
+    rating_count: e.rating_count,
+    views: e.views,
+    genres: e.genres,
+    status: e.status,
+    release_day: e.release_day,
+    featured: e.featured,
+    trending: e.trending,
+    weekly_rank: e.weekly_rank,
+    collection: e.collection,
+    episodes_count: 0,
+    episodes: [],
+  };
+});
+
+export const CURATED_WEBTOONS: Webtoon[] = [
+  ...normalizedBaseCurated,
+  ...mappedExpandedWebtoons,
+];
 
 export function getCuratedWebtoons(): Webtoon[] {
   return CURATED_WEBTOONS.map((w) => {
@@ -514,7 +483,15 @@ export function getCuratedWebtoons(): Webtoon[] {
 }
 
 export function getWebtoonById(id: string): Webtoon | undefined {
-  const found = CURATED_WEBTOONS.find((w) => w.id === id || w.slug === id);
+  if (!id) return undefined;
+  const cleanId = id.startsWith("wt-") ? id : `wt-${id}`;
+  const found = CURATED_WEBTOONS.find(
+    (w) =>
+      w.id === id ||
+      w.id === cleanId ||
+      w.slug === id ||
+      w.slug === id.replace(/^wt-/, "").replace(/^auto-/, "")
+  );
   if (!found) return undefined;
   const fullEpisodes = getFullWebtoonChapters(found.id);
   return {

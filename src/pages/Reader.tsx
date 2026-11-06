@@ -200,6 +200,56 @@ const Reader = () => {
       .filter((p) => p.length > 0);
   }, [chapter?.content]);
 
+  const chapterWords = useMemo(() => {
+    if (!chapter?.content) return 0;
+    return chapter.content.trim().split(/\s+/).filter(Boolean).length;
+  }, [chapter?.content]);
+
+  const chapterReadTime = useMemo(() => {
+    return Math.max(1, Math.round(chapterWords / 160));
+  }, [chapterWords]);
+
+  const renderFormattedText = (text: string) => {
+    const parts: (string | JSX.Element)[] = [];
+    const regex = /(\*\*([^*]+)\*\*|\*([^*]+)\*|`([^`]+)`)/g;
+    let lastIndex = 0;
+    let match;
+    let key = 0;
+
+    while ((match = regex.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push(text.substring(lastIndex, match.index));
+      }
+      if (match[2]) {
+        parts.push(
+          <strong key={key++} className="font-semibold text-foreground dark:text-zinc-100">
+            {match[2]}
+          </strong>
+        );
+      } else if (match[3]) {
+        parts.push(
+          <em key={key++} className="italic opacity-90">
+            {match[3]}
+          </em>
+        );
+      } else if (match[4]) {
+        parts.push(
+          <code
+            key={key++}
+            className="px-1.5 py-0.5 rounded text-xs font-mono bg-black/5 dark:bg-white/10 text-emerald-600 dark:text-emerald-400 font-medium"
+          >
+            {match[4]}
+          </code>
+        );
+      }
+      lastIndex = regex.lastIndex;
+    }
+    if (lastIndex < text.length) {
+      parts.push(text.substring(lastIndex));
+    }
+    return parts.length > 0 ? parts : text;
+  };
+
   const isPublicDomain = id?.startsWith("guten-") || id?.includes("gutenberg") || !book?.price_cents;
 
   return (
@@ -501,43 +551,114 @@ const Reader = () => {
           <article className={fontFamily === "serif" ? "font-serif" : "font-sans"}>
             {/* Chapter Header */}
             <header className="mb-12 pb-8 border-b border-black/10 dark:border-white/10 text-center">
-              <span className="text-xs uppercase tracking-widest opacity-60 font-medium">
-                {book?.title} · Capítulo {chapter.position} de {chapters.length}
-              </span>
-              <h1 className="mt-4 text-2xl sm:text-4xl font-normal tracking-tight">
+              <div className="flex flex-wrap items-center justify-center gap-2 mb-3">
+                <span className="text-[11px] uppercase tracking-widest opacity-60 font-medium">
+                  {book?.title} · Capítulo {chapter.position} de {chapters.length}
+                </span>
+                <span className="text-[11px] opacity-40">·</span>
+                <span className="text-[11px] font-mono opacity-60">
+                  ~{chapterReadTime} min de leitura · {chapterWords.toLocaleString()} palavras
+                </span>
+              </div>
+
+              <h1 className="mt-2 text-2xl sm:text-4xl font-normal tracking-tight">
                 {chapter.title}
               </h1>
 
-              {id?.startsWith("mod-") ? (
-                <div className="mt-4 flex items-center justify-center gap-2 text-xs text-amber-600 dark:text-amber-400 font-medium">
+              {/* Contextual Authenticity & Completeness Badges */}
+              {id?.startsWith("sci-") ? (
+                <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 font-medium border border-cyan-500/20">
                   <Sparkles className="h-3.5 w-3.5" />
-                  <span>Bestseller Moderno Mais Influente · Guia & Capítulos Integrais</span>
+                  <span>Artigo Científico Peer-Reviewed · Texto Integral Completo (Sem Resumos)</span>
+                </div>
+              ) : id?.startsWith("curr-") ? (
+                <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-medium border border-indigo-500/20">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  <span>Manual Curricular Oficial · Teoria Axiomática Completa & Exercícios Resolvidos</span>
+                </div>
+              ) : id?.startsWith("mod-") ? (
+                <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs bg-amber-500/10 text-amber-600 dark:text-amber-400 font-medium border border-amber-500/20">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  <span>Bestseller Moderno Mais Influente · Obra Integral Completa (Sem Resumos)</span>
                 </div>
               ) : isPublicDomain && (
-                <div className="mt-4 flex items-center justify-center gap-2 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium border border-emerald-500/20">
                   <Sparkles className="h-3.5 w-3.5" />
-                  <span>Obra Completa de Domínio Público · Leitura Livre</span>
+                  <span>Obra Clássica de Domínio Público · Texto Integral Completo</span>
                 </div>
               )}
             </header>
 
-            {/* Chapter Body */}
+            {/* Chapter Body with Rich Formatting */}
             <div className={`space-y-6 ${currentSize.textClass} ${currentSize.leadingClass} tracking-normal`}>
               {cleanParagraphs.map((paragraph, i) => {
+                // Markdown Table detection
+                if (paragraph.trim().startsWith("|") && paragraph.includes("\n|")) {
+                  const rows = paragraph
+                    .trim()
+                    .split("\n")
+                    .filter((r) => r.trim().startsWith("|"));
+                  const headerRow = rows[0];
+                  const dataRows = rows.slice(1).filter((r) => !r.includes("---"));
+                  const headers = headerRow
+                    .split("|")
+                    .map((c) => c.trim())
+                    .filter(Boolean);
+
+                  return (
+                    <div key={i} className="my-8 overflow-x-auto border rounded-xl shadow-sm">
+                      <table className="w-full text-left text-xs sm:text-sm border-collapse">
+                        <thead>
+                          <tr className="border-b bg-black/5 dark:bg-white/5 font-semibold">
+                            {headers.map((h, hIdx) => (
+                              <th key={hIdx} className="p-3 border-r last:border-r-0">
+                                {h}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-black/5 dark:divide-white/5">
+                          {dataRows.map((r, rIdx) => {
+                            const cells = r
+                              .split("|")
+                              .map((c) => c.trim())
+                              .filter(Boolean);
+                            return (
+                              <tr
+                                key={rIdx}
+                                className="hover:bg-black/[0.02] dark:hover:bg-white/[0.02]"
+                              >
+                                {cells.map((cell, cIdx) => (
+                                  <td key={cIdx} className="p-3 border-r last:border-r-0 font-light">
+                                    {renderFormattedText(cell)}
+                                  </td>
+                                ))}
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                }
+
                 if (paragraph.startsWith("### ")) {
                   return (
                     <h3
                       key={i}
                       className="text-xl sm:text-2xl font-semibold tracking-tight mt-10 mb-4 text-emerald-700 dark:text-emerald-400"
                     >
-                      {paragraph.replace(/^###\s+/, "")}
+                      {renderFormattedText(paragraph.replace(/^###\s+/, ""))}
                     </h3>
                   );
                 }
                 if (paragraph.startsWith("#### ")) {
                   return (
-                    <h4 key={i} className="text-lg sm:text-xl font-medium tracking-tight mt-8 mb-3 opacity-90">
-                      {paragraph.replace(/^####\s+/, "")}
+                    <h4
+                      key={i}
+                      className="text-lg sm:text-xl font-medium tracking-tight mt-8 mb-3 opacity-90 text-foreground"
+                    >
+                      {renderFormattedText(paragraph.replace(/^####\s+/, ""))}
                     </h4>
                   );
                 }
@@ -547,17 +668,26 @@ const Reader = () => {
                       key={i}
                       className="my-6 pl-5 border-l-4 border-emerald-500 italic opacity-95 text-base sm:text-lg bg-emerald-500/5 py-4 rounded-r-xl"
                     >
-                      {paragraph.replace(/^>\s*"?/, "").replace(/"?\s*$/, "")}
+                      {renderFormattedText(
+                        paragraph.replace(/^>\s*"?/, "").replace(/"?\s*$/, "")
+                      )}
                     </blockquote>
                   );
                 }
-                if (paragraph.includes("\n* ") || paragraph.startsWith("* ")) {
-                  const items = paragraph.split("\n").filter((l) => l.trim().startsWith("* "));
+                if (
+                  paragraph.includes("\n* ") ||
+                  paragraph.startsWith("* ") ||
+                  paragraph.includes("\n- ") ||
+                  paragraph.startsWith("- ")
+                ) {
+                  const items = paragraph
+                    .split("\n")
+                    .filter((l) => l.trim().startsWith("* ") || l.trim().startsWith("- "));
                   return (
                     <ul key={i} className="my-4 space-y-2 list-disc list-inside">
                       {items.map((item, idx) => (
                         <li key={idx} className="leading-relaxed">
-                          {item.replace(/^\*\s+/, "")}
+                          {renderFormattedText(item.replace(/^(\*|-)\s+/, ""))}
                         </li>
                       ))}
                     </ul>
@@ -565,7 +695,7 @@ const Reader = () => {
                 }
                 return (
                   <p key={i} className="text-justify indent-6">
-                    {paragraph}
+                    {renderFormattedText(paragraph)}
                   </p>
                 );
               })}

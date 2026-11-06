@@ -161,10 +161,27 @@ const ContentDetail = () => {
                 className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-md smooth-hover text-[11px] uppercase tracking-wider font-normal shadow-md"
               >
                 <Link
-                  to={item.type === "book" || item.id.startsWith("guten-") ? `/ler/${item.id}` : `/leitura/${item.id}`}
+                  to={
+                    item.type === "webtoon" || item.id.startsWith("wt-")
+                      ? ["wt-solo-leveling", "wt-omniscient-reader", "wt-the-beginning-after-the-end", "wt-nano-machine"].includes(item.id)
+                        ? `/webtoon/${item.id}/ler`
+                        : `/webtoon/${item.id}`
+                      : item.type === "book" ||
+                        item.id.startsWith("guten-") ||
+                        item.id.startsWith("sci-") ||
+                        item.id.startsWith("curr-") ||
+                        item.id.startsWith("mod-") ||
+                        item.id.startsWith("auto-")
+                      ? `/ler/${item.id}`
+                      : `/leitura/${item.id}`
+                  }
                   onClick={() => track(item.id, "read")}
                 >
-                  {progress?.progress_percentage ? "Continuar lendo" : "Ler obra completa agora"}
+                  {item.type === "webtoon" || item.id.startsWith("wt-")
+                    ? ["wt-solo-leveling", "wt-omniscient-reader", "wt-the-beginning-after-the-end", "wt-nano-machine"].includes(item.id)
+                      ? progress?.progress_percentage ? "Continuar lendo" : "Ler obra completa agora"
+                      : "Ver Ficha & Lançamentos Oficiais"
+                    : progress?.progress_percentage ? "Continuar lendo" : "Ler obra completa agora"}
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
