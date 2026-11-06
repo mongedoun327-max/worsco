@@ -38,7 +38,19 @@ function newsRssPlugin(): Plugin {
       { url: 'https://www.publishnews.com.br/rss/', category: 'Livros', source: 'PublishNews' },
     ],
     futebol: [
+      { url: 'https://ge.globo.com/rss/ge/futebol/futebol-internacional/', category: 'Futebol', source: 'Futebol Internacional' },
+      { url: 'https://ge.globo.com/rss/ge/futebol/futebol-internacional/futebol-ingles/', category: 'Futebol', source: 'Premier League' },
+      { url: 'https://ge.globo.com/rss/ge/futebol/futebol-internacional/futebol-espanhol/', category: 'Futebol', source: 'La Liga' },
+      { url: 'https://ge.globo.com/rss/ge/futebol/futebol-internacional/futebol-italiano/', category: 'Futebol', source: 'Serie A' },
+      { url: 'https://ge.globo.com/rss/ge/futebol/futebol-internacional/futebol-alemao/', category: 'Futebol', source: 'Bundesliga' },
+      { url: 'https://ge.globo.com/rss/ge/futebol/futebol-internacional/futebol-frances/', category: 'Futebol', source: 'Ligue 1' },
+      { url: 'https://ge.globo.com/rss/ge/futebol/futebol-internacional/liga-dos-campeoes/', category: 'Futebol', source: 'Champions League' },
+      { url: 'https://trivela.com.br/feed/', category: 'Futebol', source: 'Trivela Mundial' },
       { url: 'https://ge.globo.com/rss/ge/', category: 'Futebol', source: 'Globo Esporte' },
+    ],
+    basquete: [
+      { url: 'https://ge.globo.com/rss/ge/basquete/nba/', category: 'Basquete', source: 'NBA Brasil' },
+      { url: 'https://ge.globo.com/rss/ge/basquete/', category: 'Basquete', source: 'Basquete GE' },
     ],
     mercado: [
       { url: 'https://g1.globo.com/rss/g1/economia/', category: 'Mercado', source: 'G1 Economia' },
@@ -377,7 +389,9 @@ function newsRssPlugin(): Plugin {
     } else if (catLower.includes('livro')) {
       historicalContext = `O mercado editorial e a circulação literária vivem um momento de redescoberta de formatos. Embora o livro físico mantenha sua solidez como objeto cultural de prestígio, a integração com comunidades digitais, clubes de leitura virtuais e a disponibilização em massa de obras de domínio público remodelaram a relação do leitor com os clássicos e com os lançamentos contemporâneos.\n\nO debate suscitado por **"${item.title}"** insere-se diretamente no esforço contínuo de democratização do acesso à leitura, sustentabilidade das casas editoriais e valorização autoral em tempos de excesso informacional.`;
     } else if (catLower.includes('futebol')) {
-      historicalContext = `O futebol profissional contemporâneo opera como uma indústria de entretenimento global de altíssima intensidade. A modernização da gestão com as Sociedades Anônimas do Futebol (SAFs), o peso econômico dos direitos de transmissão e o calendário frenético impõem desafios diários a elencos e comissões técnicas.\n\nNeste cenário, **"${item.title}"** marca um momento decisivo para as pretensões táticas e institucionais das equipes envolvidas, repercutindo diretamente na tabela e na paixão das arquibancadas.`;
+      historicalContext = `O futebol de elite mundial vive o auge de sua intensidade tática e econômica, polarizado nas cinco maiores ligas do planeta (Premier League inglesa, La Liga espanhola, Serie A italiana, Bundesliga alemã e Ligue 1 francesa), sob a regência máxima da UEFA Champions League. A disparidade de folhas salariais, o Fair Play Financeiro (FFP), os contratos bilionários de direitos audiovisuais e a modernização dos modelos de jogo impõem uma exigência extrema a elencos e comissões técnicas.\n\nNeste cenário de alcance planetário, **"${item.title}"** reverbera diretamente nos rumos das tabelas de classificação, na disputa pelas vagas europeias e na paixão global dos torcedores.`;
+    } else if (catLower.includes('basquete') || catLower.includes('nba')) {
+      historicalContext = `A National Basketball Association (NBA) é o epicentro do basquetebol mundial, onde o atleticismo de ponta se funde a um espetáculo midiático global. A era moderna da liga é caracterizada pelo ritmo ultra-acelerado (*pace*), proliferação de chutes do perímetro, disputas acirradas pelo troféu de MVP e a colisão de gerações entre lendas consagradas e os novos astros mundiais.\n\nPara além das estatísticas de box score, a liga é sacudida diariamente pelas tensões de vestiário, arbitragens controversas com relatórios L2M (*Last Two Minute Report*), decisões disciplinares rigorosas e o mercado frenético de trocas antes do fechamento da janela (*trade deadline*), onde um único movimento pode alterar a balança de poder rumo ao anel de campeão.`;
     } else if (catLower.includes('mercado') || catLower.includes('econom')) {
       historicalContext = `Os ciclos de política monetária, o comportamento das taxas de juros básicas e as pressões inflacionárias globais formam a moldura onde as decisões corporativas são tomadas. Fundos de investimento e empresas reavaliam custos de captação e planos de expansão a cada indicador financeiro.\n\nA movimentação em torno de **"${item.title}"** reflete a dinâmica dos mercados em antecipar cenários de liquidez, governança e valor de longo prazo.`;
     } else if (catLower.includes('viral') || catLower.includes('trend')) {
@@ -530,8 +544,9 @@ function newsRssPlugin(): Plugin {
           // Also add Google News query fallback for extra volume if needed
           const googleFeedPromise = (async () => {
             const queryMap: Record<string, string> = {
-              all: 'noticias brasil economia cultura futebol ciencia tecnologia',
-              futebol: 'futebol brasileirao libertadores champions copa',
+              all: 'noticias mundo economia cultura futebol basquete ciencia tecnologia',
+              futebol: '"Premier League" OR "La Liga" OR "Champions League" OR "Serie A" OR "Bundesliga" OR "Ligue 1" OR "Real Madrid" OR "Manchester City" OR "Barcelona" OR "Bayern" futebol',
+              basquete: '"NBA" basquete resultados Lakers Warriors Celtics Nuggets LeBron Curry Doncic Jokic Wembanyama polemica troca',
               mercado: 'mercado financeiro economia ibovespa selic startups',
               virais: 'viral redes sociais internet trend tiktok memes',
               listas: 'ranking top 10 melhores lancamentos guia',
@@ -553,6 +568,7 @@ function newsRssPlugin(): Plugin {
               const parsed = await parser.parseURL(rssUrl);
               const defaultCatMap: Record<string, string> = {
                 futebol: 'Futebol',
+                basquete: 'Basquete',
                 mercado: 'Mercado',
                 virais: 'Virais',
                 listas: 'Listas',
@@ -569,7 +585,7 @@ function newsRssPlugin(): Plugin {
               };
               return (parsed.items || []).map((it) => ({
                 ...it,
-                _sourceName: 'Imprensa Nacional',
+                _sourceName: 'Imprensa Internacional',
                 _defaultCategory: defaultCatMap[topic] || 'Cultura',
               }));
             } catch {
@@ -615,7 +631,9 @@ function newsRssPlugin(): Plugin {
             // Detect accurate category based on title and feed
             let cat = item._defaultCategory || 'Cultura';
             const lowerTitle = title.toLowerCase();
-            if (/futebol|brasileir[aã]o|libertadores|champions|liga das na[cç][oõ]es|uefa|real madrid|barcelona|flamengo|palmeiras|corinthians|s[aã]o paulo fc|cruzeiro|gr[eê]mio|botafogo|vasco|fluminense|gol\b|campeonato|copa do mundo|craque|sele[cç][aã]o|\b(sc internacional|colorado)\b|\b[A-Za-zÀ-ÿ0-9-]+\s+x\s+[A-Za-zÀ-ÿ0-9-]+/i.test(lowerTitle)) {
+            if (/basquete|basquetebol|nba\b|lakers|warriors|celtics|nuggets|bucks|suns|clippers|sixers|knicks|heat\b|mavericks|timberwolves|thunder|grizzlies|pacers|cavaliers|lebron|curry|doncic|giannis|tatum|jokic|wembanyama|durant|edwards|shai|playoffs nba|triplo-duplo|teto salarial nba|cesta|arremesso/i.test(lowerTitle)) {
+              cat = 'Basquete';
+            } else if (/futebol|premier league|la liga|serie a|bundesliga|ligue 1|champions league|uefa|real madrid|barcelona|manchester city|manchester united|liverpool|arsenal|chelsea|tottenham|bayern|borussia|psg|paris saint-germain|inter de mil[aã]o|juventus|milan|napoli|atletico de madrid|roma|bayer leverkusen|campeonato ingl[eê]s|campeonato espanhol|campeonato alem[aã]o|campeonato italiano|campeonato franc[eê]s|libertadores|brasileir[aã]o|copa do mundo|gol\b|bola de ouro|craque|est[aá]dio|\b[A-Za-zÀ-ÿ0-9-]+\s+x\s+[A-Za-zÀ-ÿ0-9-]+/i.test(lowerTitle)) {
               cat = 'Futebol';
             } else if (/mercado|a[cç][oõ]es|ibovespa|selic|d[oó]lar|infla[cç][aã]o|banco central|investimento|startup|cripto|bitcoin|bolsa de valores|lucro|faturamento|reais|bilh[oõ]es/i.test(lowerTitle)) {
               cat = 'Mercado';
@@ -1101,73 +1119,151 @@ function bookAutomationPlugin(): Plugin {
   }
 
   function synthesizeChapters(item: any, id: string) {
-    const chapters = [
+    const title = (item.title || '').trim();
+    const author = (item.author || 'Autor').trim();
+    const lower = `${title} ${author}`.toLowerCase();
+
+    if (/descartes|discurso do m[eé]todo/i.test(lower)) {
+      return [
+        {
+          id: `chap-${id}-1`,
+          book_id: id,
+          position: 1,
+          title: 'Primeira Parte — Considerações a Respeito das Ciências e a Busca do Saber',
+          content: `O bom senso é a coisa mais bem partilhada do mundo, pois cada qual pensa estar tão bem provido dele que mesmo os mais difíceis de contentar em qualquer outra coisa não costumam desejar mais do que têm.\n\nRené Descartes inaugura sua investigação epistemológica constatando que a diversidade de nossas opiniões não decorre de uns serem mais racionais que outros, mas unicamente de conduzirmos nossos pensamentos por caminhos diversos e não considerarmos as mesmas coisas. Não basta ter o espírito bom; o principal é aplicá-lo bem.\n\nDescartes relata sua formação no célebre colégio jesuíta de La Flèche. Desde a infância fora nutrido nas letras, persuadido de que por meio delas se podia adquirir um conhecimento claro e seguro de tudo o que é útil à vida. Todavia, ao concluir o curso de estudos humanísticos, encontrou-se embaraçado em tantas dúvidas e erros que lhe pareceu não ter obtido outro proveito senão descobrir mais e mais a sua própria ignorância.\n\nEle homenageia a beleza da eloquência e da poesia, a sutileza das matemáticas e a dignidade da teologia, mas adverte: a filosofia tradicional, apesar de cultivada pelos mais excelentes espíritos que viveram desde muitos séculos, não contém uma só matéria sobre a qual não haja disputas e incertezas. Daí sua decisão corajosa de abandonar o estudo dos livros para viajar pelo grande livro do mundo, observando costumes, cortes e exércitos antes de voltar-se para o exame de si mesmo.`,
+          is_free_preview: true,
+        },
+        {
+          id: `chap-${id}-2`,
+          book_id: id,
+          position: 2,
+          title: 'Segunda Parte — As Quatro Regras Fundamentais do Método Cartesiano',
+          content: `Estando na Alemanha por ocasião do início da Guerra dos Trinta Anos, recolhido em um aposento aquecido por uma estufa, Descartes concebeu a ideia de que as obras compostas por vários mestres são quase sempre menos perfeitas do que aquelas edificadas pelo trabalho de um único arquiteto.\n\nPara reformar os próprios pensamentos sem se perder em disputas escolásticas inférteis, formulou quatro preceitos invioláveis:\n\n1. **A Regra da Evidência**: Jamais acolher coisa alguma como verdadeira que eu não conhecesse evidentemente como tal; isto é, evitar cuidadosamente a precipitação e a prevenção, incluindo em meus juízos somente o que se apresentasse tão clara e distintamente ao meu espírito que eu não tivesse nenhuma ocasião de pô-lo em dúvida.\n\n2. **A Regra da Análise**: Dividir cada uma das dificuldades que eu examinasse em tantas parcelas quantas fossem possíveis e necessárias para melhor resolvê-las.\n\n3. **A Regra da Síntese**: Conduzir por ordem os meus pensamentos, começando pelos objetos mais simples e mais fáceis de conhecer, para subir a pouco e pouco, como por degraus, até o conhecimento dos mais compostos, supondo mesmo uma ordem entre aqueles que não se precedem naturalmente uns aos outros.\n\n4. **A Regra da Enumeração**: Fazer em tudo enumerações tão completas e revisões tão gerais que eu tivesse a certeza de nada omitir.\n\nEssas quatro regras simples, inspiradas na lógica e na análise geométrica, bastam para guiar a razão na conquista de certezas inabaláveis.`,
+          is_free_preview: true,
+        },
+        {
+          id: `chap-${id}-3`,
+          book_id: id,
+          position: 3,
+          title: 'Terceira Parte — A Moral Provisória para Navegar a Vida Prática',
+          content: `Antes de demolir a velha habitação de suas opiniões para reconstruí-la sobre alicerces firmes, Descartes sentiu a necessidade imperiosa de estabelecer uma **Moral Provisória**, a fim de não permanecer irresoluto e hesitante em suas ações diárias enquanto a razão o obrigasse a sê-lo em seus juízos.\n\nA moral provisória compunha-se de três máximas fundamentais:\n\n- **Primeira Máxima**: Obedecer às leis e aos costumes do meu país, retendo firmemente a religião em que a graça de Deus me fez ser instruído desde a infância, e governando-me em tudo pelas opiniões mais moderadas e mais distantes do excesso que fossem comumente recebidas na prática pelos mais sensatos.\n\n- **Segunda Máxima**: Ser o mais firme e o mais resoluto que pudesse em minhas ações, e seguir não menos constantemente as opiniões mais duvidosas, uma vez que a elas me tivesse determinado, do que se fossem seguríssimas. Aquele que se perde em uma floresta escura não deve vaguear em círculos nem parar, mas caminhar sempre na mesma direção em linha reta.\n\n- **Terceira Máxima**: Procurar sempre antes vencer a mim mesmo do que à fortuna, e modificar antes os meus desejos do que a ordem do mundo. Nada está inteiramente sob nosso poder exceto os nossos próprios pensamentos; quando fizemos o nosso melhor em relação às coisas exteriores, tudo o que não conseguimos alcançar é, para nós, uma impossibilidade absoluta.\n\nCultivando tais máximas, Descartes assegurou a serenidade necessária para consagrar toda a sua existência ao cultivo da razão e ao progresso no conhecimento da verdade.`,
+          is_free_preview: true,
+        },
+        {
+          id: `chap-${id}-4`,
+          book_id: id,
+          position: 4,
+          title: 'Quarta Parte — A Dúvida Hiperbólica, o Cogito Ergo Sum e a Existência de Deus',
+          content: `Descartes aplica a dúvida a todas as coisas:\n- Os sentidos às vezes nos enganam; logo, não é prudente confiar em quem já nos iludiu uma vez.\n- Homens se enganam mesmo nas mais simples demonstrações geométricas.\n- Em sonhos, vivenciamos experiências tão vívidas que não há indício seguro pelo qual se possa distinguir com nitidez a vigília do sono.\n\nContudo, no momento exato em que desejava pensar que tudo era falso, percebeu que era forçoso e necessário que ele, que pensava isso, fosse alguma coisa:\n\n> **\"Je pense, donc je suis (Penso, logo existo).\"**\n\nEssa verdade era tão firme e tão certa que todas as mais extravagantes suposições dos céticos eram incapazes de abalá-la. Descartes reconheceu nela o primeiro princípio da filosofia que procurava.\n\nExaminando em seguida o que ele era, descobriu ser uma substância cuja essência ou natureza consiste unicamente em pensar (**Res Cogitans**), independente do corpo e do espaço material (**Res Extensa**).\n\nPercebendo que duvidar é menos perfeito do que conhecer, indagou de onde lhe viera a ideia de um Ser mais perfeito do que ele mesmo. Concluiu que era manifesto que tal ideia de perfeição infinita não poderia provir do nada nem dele próprio (um ser finito e imperfeito); ela fora colocada em seu espírito pelo próprio Ser Perfeito, isto é, por Deus. A veracidade de Deus torna-se a garantia definitiva de que nossas percepções claras e distintas não são ilusões.`,
+          is_free_preview: true,
+        },
+        {
+          id: `chap-${id}-5`,
+          book_id: id,
+          position: 5,
+          title: 'Quinta e Sexta Partes — A Física, o Homem Mecânico e o Domínio da Natureza',
+          content: `Nas partes finais, Descartes expõe os princípios de sua física mecanicista e sua fisiologia. O corpo humano é compreendido como uma máquina admirável formada pela mão de Deus, dotada de autômatos biológicos onde o coração opera como um motor hidráulico e termodinâmico, impulsionando os espíritos animais através dos nervos e músculos.\n\nA diferença essencial entre o homem e as bestas reside na razão e na linguagem criativa: enquanto animais operam por meros reflexos mecânicos pré-programados, o homem articula palavras para exprimir pensamentos inéditos e adapta-se a infinitas circunstâncias imprevistas.\n\nNa Sexta Parte, Descartes proclama o objetivo supremo da ciência moderna: substituir a filosofia especulativa ensinada nas escolas por uma filosofia prática que nos torne **\"senhores e possuidores da natureza\" (maîtres et possesseurs de la nature)**.\n\nEsse domínio não visa ao orgulho tirânico, mas à utilidade dos homens, à conservação da saúde física e à libertação contra as enfermidades da mente e do corpo. O conhecimento científico é uma tarefa coletiva que exige cooperação entre as gerações vindouras.`,
+          is_free_preview: true,
+        },
+      ];
+    }
+
+    if (/goleman|intelig[eê]ncia emocional/i.test(lower)) {
+      return [
+        {
+          id: `chap-${id}-1`,
+          book_id: id,
+          position: 1,
+          title: 'Capítulo I — A Neurobiologia das Emoções e o Sequestro da Amígdala',
+          content: `Daniel Goleman demonstra que possuímos duas mentes: uma que pensa e outra que sente. Durante milhões de anos de evolução biológica, as estruturas cerebrais límbicas (responsáveis pelo medo, raiva, afeto e sobrevivência) desenvolveram-se muito antes do neocórtex racional.\n\nNo centro desse sistema reside a **amígdala cortical**, uma sentinela psicológica que escaneia o ambiente em busca de ameaças vitais. Em situações de estresse agudo ou provocação extrema, a amígdala pode deflagrar uma resposta de luta ou fuga milissegundos antes que o córtex pré-frontal consiga analisar racionalmente os fatos — fenômeno que Goleman consagrou como o **Sequestro da Amígdala (Amygdala Hijack)**.\n\nCompreender essa fiação neurológica é o primeiro passo para não se tornar refém de impulsos destrutivos.`,
+          is_free_preview: true,
+        },
+        {
+          id: `chap-${id}-2`,
+          book_id: id,
+          position: 2,
+          title: 'Capítulo II — Autoconsciência e o Domínio das Paixões (Autorregulação)',
+          content: `A autoconsciência emocional é a capacidade de reconhecer um sentimento no exato momento em que ele surge. Sócrates já ensinava 'Conhece-te a ti mesmo'; na psicologia moderna, nomear com precisão o estado interior desativa a hiperativação da amígdala.\n\nA autorregulação, por sua vez, não significa reprimir ou anestesiar as emoções, mas dosá-las de modo proporcional. A ira, a ansiedade e a tristeza têm funções evolutivas saudáveis; tornam-se tóxicas apenas quando perdem o freio inibitório e se prolongam de forma desadaptativa.\n\nTécnicas de respiração, reestruturação cognitiva e pausas estratégicas permitem ao córtex pré-frontal retomar a liderança executiva sobre os impulsos emocionais.`,
+          is_free_preview: true,
+        },
+        {
+          id: `chap-${id}-3`,
+          book_id: id,
+          position: 3,
+          title: 'Capítulo III — Motivação Intrínseca e o Teste do Marshmallow',
+          content: `A capacidade de adiar a gratificação imediata em prol de um objetivo de longo prazo é o maior indicador psicológico de sucesso na vida adulta.\n\nO célebre experimento do Marshmallow de Walter Mischel em Stanford acompanhou crianças de quatro anos que receberam a escolha: comer um doce agora ou esperar 15 minutos pelo segundo doce. Os jovens que conseguiram esperar apresentaram, décadas depois, notas escolares superiores, menor índice de obesidade, menos dependência química e casamentos mais duradouros.\n\nA auto-motivação alimenta-se do **estado de Fluxo (Flow)**, onde o indivíduo funde sua atenção com a tarefa, impulsionado pela paixão intrínseca e pelo otimismo inteligente perante os fracassos temporários.`,
+          is_free_preview: true,
+        },
+        {
+          id: `chap-${id}-4`,
+          book_id: id,
+          position: 4,
+          title: 'Capítulo IV — Empatia: A Leitura Sutil do Outro',
+          content: `A empatia baseia-se na autoconsciência: quanto mais abertos estamos às nossas próprias emoções, mais habilidosos seremos na leitura dos sinais não verbais alheios.\n\nMais de 90% da comunicação emocional humana ocorre pelo tom de voz, expressão facial, postura física e microgestos. A empatia divide-se em três níveis:\n1. Empatia Cognitiva: Compreender a perspectiva intelectual do outro;\n2. Empatia Emocional: Sentir no próprio corpo a ressonância do afeto alheio através dos neurônios-espelho;\n3. Preocupação Empática: A compaixão ativa que impele à ajuda e ao amparo prático.\n\nA falta crônica de empatia é o traço distintivo de sociopatas, tiranos e líderes tóxicos que destroem o clima de suas organizações.`,
+          is_free_preview: true,
+        },
+        {
+          id: `chap-${id}-5`,
+          book_id: id,
+          position: 5,
+          title: 'Capítulo V — Aptidão Social, Liderança Ressonante e o Futuro da Educação',
+          content: `As habilidades sociais coroam a Inteligência Emocional. Líderes extraordinários não se destacam pelo QI bruto ou conhecimento técnico isolado, mas pela capacidade de inspirar, resolver conflitos sem ferir dignidades, forjar alianças sólidas e contagiar grupos com entusiasmo sereno.\n\nGoleman conclama as escolas e famílias a implantarem a Alfabetização Socioemocional desde a infância. Ensinar matemática e gramática sem ensinar autodomínio, empatia e cooperação cidadã é produzir adultos desamparados que sucumbem à depressão, à violência e à solidão em um mundo hiperconectado.`,
+          is_free_preview: true,
+        },
+      ];
+    }
+
+    // Default high-depth academic generator
+    return [
       {
         id: `chap-${id}-1`,
         book_id: id,
         position: 1,
-        title: 'Capítulo I — Introdução, Origem e Premissas Fundamentais',
-        content: `A obra "${item.title}" de ${item.author} constitui uma referência basilar nos estudos de ${item.category}.\n\nPremissas Centrais:\n1. A busca pela clareza conceitual antes de qualquer juízo de valor.\n2. A recusa do dogmatismo cego: o conhecimento autêntico floresce a partir da verificação metódica e da observação do real.\n3. A harmonia entre conhecimento reflexivo e conduta ética no dia a dia.\n\nNeste capítulo inaugural, ${item.author} formula o problema central que percorre toda a obra: como o ser humano pode superar a confusão mental, cultivar a lucidez e alinhar suas ações aos princípios perenes da virtude e do discernimento.`,
+        title: `Capítulo I — Fundamentos, Contexto Histórico e Premissas Centrais de ${title}`,
+        content: `A obra "${title}" de ${author} ocupa um lugar seminal no patrimônio intelectual de ${item.category || 'Humanidades'}.\n\nPara compreender a magnitude de suas proposições, é imperativo analisar o contexto sócio-histórico em que foi gerada. O autor não se limita a expor opiniões superficiais; ele constrói um edifício dedutivo que desafia as convenções estabelecidas de sua época.\n\nPremissas Centrais Desenvolvidas:\n1. A crítica à ilusão do senso comum: todo avanço cognitivo principia pela suspeita metódica das certezas herdadas sem reflexão;\n2. A exigência de rigor analítico: decompor as noções complexas até alcançar suas unidades estruturantes mais puras;\n3. A unidade indissolúvel entre teoria e conduta ética: o verdadeiro saber não é mero ornamento retórico, mas uma bússola diretiva para a ação justa no mundo real.\n\nNeste capítulo inaugural, ${author} delimita o problema fundante da obra, estabelecendo os postulados epistemológicos que orientarão todos os desenvolvimentos subsequentes.`,
         is_free_preview: true,
       },
       {
         id: `chap-${id}-2`,
         book_id: id,
         position: 2,
-        title: 'Capítulo II — Estrutura Teórica e a Dinâmica das Ideias',
-        content: `O autor decompõe o objeto de análise em suas forças constituintes. Destacam-se o atrito produtivo entre tradição e inovação, a distinção entre causas essenciais e acidentais, e o impacto das paixões humanas na tomada de decisão.\n\nConceitos-Chave:\n- Causalidade Interna: os acontecimentos externos adquirem sentido a partir da postura racional com que são interpretados.\n- Disciplina e Foco: a vontade consciente deve prevalecer sobre impulsos momentâneos.\n- Sensibilidade ao Contexto: nenhuma regra deve ser aplicada cegamente sem a devida prudência circunstancial.`,
+        title: 'Capítulo II — Estrutura Teórica e a Dialética das Forças Antagônicas',
+        content: `O autor decompõe o objeto examinado em suas tensões estruturantes fundamentais: a dialética entre ordem e dinamismo, necessidade cósmica e liberdade de arbítrio, essência substantiva e contingência histórica.\n\nConceitos-Chave Analisados:\n- A Causalidade Interna dos Fenômenos: nada se compreende de forma isolada; cada elemento adquire seu significado a partir de sua inserção no todo sistêmico;\n- O Equilíbrio Dinâmico: a estabilidade de um sistema ou de um caráter humano não provém da ausência de choques, mas da capacidade de sobrecompensar e absorver a volatilidade com virtuosismo;\n- A Prudência Situacional: normas abstratas perdem eficácia quando aplicadas sem a sensibilidade às particularidades do momento oportuno (Kairos).\n\nA argumentação demonstra a esterilidade dos extremismos dogmáticos e fundamenta a superioridade do discernimento racional.`,
         is_free_preview: true,
       },
       {
         id: `chap-${id}-3`,
         book_id: id,
         position: 3,
-        title: 'Capítulo III — Metodologia Crítica e Dedução Racional',
-        content: `Neste estágio, ${item.author} detalha o método investigativo que garante a solidez de suas conclusões. Abandonam-se os preconceitos herdados da opinião pública para examinar as evidências com rigor geométrico e clareza cartesiana.\n\nAs três etapas da metodologia:\n1. Decomposição analítica dos problemas em partes menores.\n2. Ordenação dos pensamentos a partir dos mais simples até os mais complexos.\n3. Revisão sistemática para assegurar que nada foi omitido.`,
+        title: 'Capítulo III — Metodologia de Investigação e a Refutação de Falácias',
+        content: `A robustez de "${title}" reside no rigor inegociável de seu procedimento investigativo. O autor examina criticamente as falácias sofísticas mais correntes que costumam nublar o juízo humano:\n\n- O falso dilema e a redução simplista da realidade a opções binárias excludentes;\n- A falácia de autoridade que confunde o renome do orador com a veracidade intrínseca da tese;\n- A confusão perigosa entre correlação acidental e causa motriz essencial.\n\nPor meio de contraexemplos históricos e experimentos de pensamento rigorosos, ${author} desmantela as objeções dos adversários e consolida um modelo heurístico dotado de extraordinária fecundidade intelectual.`,
         is_free_preview: true,
       },
       {
         id: `chap-${id}-4`,
         book_id: id,
         position: 4,
-        title: 'Capítulo IV — As Dimensões Humanas e o Desafio da Convivência',
-        content: `O autor investiga a natureza das interações sociais, os laços de solidariedade e os vícios que corroem o tecido da comunidade.\n\nLições Centrais:\n- O cultivo da empatia ativa e do diálogo socrático.\n- O desmascaramento da vaidade e das lisonjas vazias.\n- A defesa intransigente da justiça e do respeito à dignidade de todo indivíduo.`,
+        title: 'Capítulo IV — As Dimensões Humanas: Psicologia, Afeto e Convivência Coletiva',
+        content: `Nenhum sistema filosófico, científico ou estratégico é completo se ignorar a natureza do ser humano e as paixões que o mobilizam no tecido societário.\n\nNeste estágio da obra, o foco recai sobre a dinâmica das relações interpessoais:\n- A dialética entre o interesse individual e o compromisso ético com a comunidade cívica;\n- O perigo corrosivo da lisonja servil e da soberba institucional na tomada de decisões colegiadas;\n- O cultivo da temperança e da escuta genuína como pilares da sustentabilidade das organizações humanas.\n\nO texto evidencia que a integridade pessoal não é um luxo opcional, mas o sustentáculo indispensável sobre o qual repousa toda ordem civil duradoura.`,
         is_free_preview: true,
       },
       {
         id: `chap-${id}-5`,
         book_id: id,
         position: 5,
-        title: 'Capítulo V — Estratégia Prática e Aplicação Operacional',
-        content: `Abandonando a especulação abstrata, o texto oferece diretrizes executivas claras para resolver conflitos e obter resultados sustentáveis.\n\nDiretrizes Operacionais:\n1. Foco estrito no que se encontra sob controle direto.\n2. Otimização do tempo e eliminação do ruído secundário.\n3. Postura inabalável perante adversidades inevitáveis.`,
+        title: 'Capítulo V — Princípios Operacionais e Diretrizes para a Ação no Mundo Real',
+        content: `Abandonando a especulação desvinculada da realidade prática, ${author} oferece um conjunto límpido de diretrizes executivas para orientar as decisões mais cruciais:\n\n1. O Princípio da Focagem Estratégica: direcionar o peso das energias vitais sobre o ponto crítico de alavancagem, eliminando dispersões secundárias;\n2. A Gestão da Incerteza e do Risco: antecipar contingências adversas construindo redundâncias e margens de segurança antes que a tempestade desabe;\n3. A Coerência entre Meios e Fins: objetivos nobres jamais podem ser alcançados por meio de instrumentos vis sem degradar o próprio resultado final.\n\nAqueles que dominam esses preceitos operam com serenidade em meio à turbulência e edificam projetos resistentes ao teste inexorável do tempo.`,
         is_free_preview: true,
       },
       {
         id: `chap-${id}-6`,
         book_id: id,
         position: 6,
-        title: 'Capítulo VI — Superação de Paradoxos e Resistência Mental',
-        content: `O capítulo enfrenta as contradições aparentes da vida humana: a coexistência entre liberdade e determinismo, dever e desejo, dor e crescimento. Demonstra que o caráter se forja na superação das resistências cotidianas.`,
-        is_free_preview: true,
-      },
-      {
-        id: `chap-${id}-7`,
-        book_id: id,
-        position: 7,
-        title: 'Capítulo VII — O Legado Ético e a Formação do Caráter',
-        content: `O autor conclama o leitor a transformar o conhecimento adquirido em compromisso moral inegociável. A sabedoria que não melhora a convivência e o caráter do indivíduo é estéril. A integridade pessoal é o bem mais valioso que alguém pode legar à posteridade.`,
-        is_free_preview: true,
-      },
-      {
-        id: `chap-${id}-8`,
-        book_id: id,
-        position: 8,
-        title: 'Capítulo VIII — Síntese Conclusiva e Guia de Ação Contínua',
-        content: `Fechamento magistral da obra com resumo esquemático de seus princípios invioláveis, sugestões de exercícios práticos e roteiro para leitura reflexiva continuada. Um clássico indispensável catalogado automaticamente pela Worscoi.`,
+        title: `Capítulo VI — O Legado Perene de ${title} e a Síntese Final`,
+        content: `No coroamento da obra, ${author} realiza uma síntese panorâmica dos postulados apresentados e convida o leitor a assumir a responsabilidade intransferível por sua própria formação intelectual e moral.\n\nO conhecimento autêntico é um chamado à superação da mediocridade e ao compromisso sagrado com a verdade e o florescimento humano. Que as lições imperecíveis de "${title}" sirvam como farol inabalável para guiar reflexões, escolhas e conquistas nas gerações futuras.`,
         is_free_preview: true,
       },
     ];
-    return chapters;
   }
 
   function processNextInQueue(state: any): any {
@@ -1446,6 +1542,66 @@ function officialWebtoonIntegrationPlugin(): Plugin {
         } catch (err: any) {
           res.statusCode = 500;
           res.end(err?.message || 'Proxy error');
+        }
+      });
+
+      // MangaDex & Tomato Feed Proxy
+      server.middlewares.use('/api/mangadex/feed', async (req, res) => {
+        try {
+          const urlObj = new URL(req.url || '', `http://${req.headers.host || 'localhost:3000'}`);
+          const mangaId = urlObj.searchParams.get('mangaId');
+          const lang = urlObj.searchParams.get('lang') || 'pt-br';
+          const limit = urlObj.searchParams.get('limit') || '100';
+          if (!mangaId) {
+            res.statusCode = 400;
+            res.end(JSON.stringify({ error: 'Missing mangaId' }));
+            return;
+          }
+          let upstream = `https://api.mangadex.org/manga/${mangaId}/feed?order[chapter]=asc&limit=${limit}&includes[]=scanlation_group`;
+          if (lang === 'pt-br') {
+            upstream += '&translatedLanguage[]=pt-br&translatedLanguage[]=pt';
+          } else if (lang === 'en') {
+            upstream += '&translatedLanguage[]=en';
+          }
+          const upRes = await fetch(upstream, {
+            headers: {
+              'User-Agent': 'WorscoiReader/1.0',
+              'Accept': 'application/json',
+            },
+          });
+          const json = await upRes.text();
+          res.setHeader('Content-Type', 'application/json');
+          res.setHeader('Cache-Control', 'public, max-age=3600');
+          res.end(json);
+        } catch (err: any) {
+          res.statusCode = 500;
+          res.end(JSON.stringify({ error: err?.message || 'Proxy error' }));
+        }
+      });
+
+      // MangaDex & Tomato At-Home Server Pages Proxy
+      server.middlewares.use('/api/mangadex/server', async (req, res) => {
+        try {
+          const urlObj = new URL(req.url || '', `http://${req.headers.host || 'localhost:3000'}`);
+          const chapterId = urlObj.searchParams.get('chapterId');
+          if (!chapterId) {
+            res.statusCode = 400;
+            res.end(JSON.stringify({ error: 'Missing chapterId' }));
+            return;
+          }
+          const upRes = await fetch(`https://api.mangadex.org/at-home/server/${chapterId}`, {
+            headers: {
+              'User-Agent': 'WorscoiReader/1.0',
+              'Accept': 'application/json',
+            },
+          });
+          const json = await upRes.text();
+          res.setHeader('Content-Type', 'application/json');
+          res.setHeader('Cache-Control', 'public, max-age=3600');
+          res.end(json);
+        } catch (err: any) {
+          res.statusCode = 500;
+          res.end(JSON.stringify({ error: err?.message || 'Proxy error' }));
         }
       });
 

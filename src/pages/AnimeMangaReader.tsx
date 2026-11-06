@@ -8,8 +8,11 @@ import {
   Minimize2,
   Tv,
   BookOpen,
-  Sliders,
   Sparkles,
+  Loader2,
+  RefreshCw,
+  Zap,
+  Globe,
 } from "lucide-react";
 import {
   ANIMES_DATA,
@@ -18,8 +21,26 @@ import {
   saveMangaProgress,
   getMangaProgress,
 } from "@/lib/animes";
+import {
+  fetchMangaDexChapters,
+  fetchMangaDexChapterPages,
+  MangaDexChapter,
+} from "@/lib/mangadex";
 import { useContentProtection } from "@/hooks/useContentProtection";
 import { toast } from "sonner";
+
+interface UnifiedChapter {
+  id: string;
+  number: string | number;
+  numericNumber: number;
+  title: string;
+  pagesCount: number;
+  pages?: string[];
+  mangadexChapterId?: string;
+  source: "local" | "mangadex";
+  language?: string;
+  group?: string;
+}
 
 export const AnimeMangaReader = () => {
   useContentProtection();
@@ -30,38 +51,176 @@ export const AnimeMangaReader = () => {
     return ANIMES_DATA.find((a) => a.id === id || a.slug === id);
   }, [id]);
 
-  const chapters = useMemo(() => anime?.manga?.chapters || [], [anime]);
+  // Online MangaDex chapters loaded dynamically
+  const [onlineChapters, setOnlineChapters] = useState<MangaDexChapter[]>([]);
+  const [isFetchingChapterList, setIsFetchingChapterList] = useState(false);
 
-  const currentChapter: MangaChapter | undefined = useMemo(() => {
-    if (!chapters.length) return undefined;
+  // Reader state
+  const [readingMode, setReadingMode] = useState<"vertical" | "single">("vertical");
+  const [imageQuality, setImageQuality] = useState<"data" | "dataSaver">("data");
+  const [currentPageIndex, setCurrentPageIndex] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [resolvedPages, setResolvedPages] = useState<string[]>([]);
+  const [isLoadingPages, setIsLoadingPages] = useState(true);
+  const [pageError, setPageError] = useState<string | null>(null);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Fetch full chapter list from MangaDex & Tomato if available
+  useEffect(() => {
+    if (!anime?.manga?.mangadexId) return;
+    let isMounted = true;
+    setIsFetchingChapterList(true);
+
+    fetchMangaDexChapters(anime.manga.mangadexId, "all")
+      .then((list) => {
+        if (!isMounted) return;
+        setOnlineChapters(list);
+      })
+      .catch((err) => {
+        console.warn("Could not load online chapter list:", err);
+      })
+      .finally(() => {
+        if (isMounted) setIsFetchingChapterList(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [anime?.manga?.mangadexId]);
+
+  // Unified list of chapters combining pre-seeded local and MangaDex chapters
+  const allChapters: UnifiedChapter[] = useMemo(() => {
+    const list: UnifiedChapter[] = [];
+    const seenIds = new Set<string>();
+
+    // 1. Add local chapters first if present
+    if (anime?.manga?.chapters) {
+      for (const ch of anime.manga.chapters) {
+        list.push({
+          id: ch.id,
+          number: ch.number,
+          numericNumber: ch.number,
+          title: ch.title,
+          pagesCount: ch.pagesCount,
+          pages: ch.pages,
+          mangadexChapterId: ch.mangadexChapterId,
+          source: ch.pages && ch.pages.length > 0 ? "local" : "mangadex",
+          language: "PT-BR",
+        });
+        seenIds.add(ch.id);
+        if (ch.mangadexChapterId) seenIds.add(ch.mangadexChapterId);
+      }
+    }
+
+    // 2. Add online MangaDex chapters
+    for (const och of onlineChapters) {
+      if (!seenIds.has(och.id)) {
+        list.push({
+          id: och.id,
+          number: och.number,
+          numericNumber: och.numericNumber,
+          title: och.title,
+          pagesCount: och.pagesCount,
+          mangadexChapterId: och.id,
+          source: "mangadex",
+          language: och.translatedLanguage.toUpperCase(),
+          group: och.scanlationGroup,
+        });
+        seenIds.add(och.id);
+      }
+    }
+
+    // Sort ascending by chapter number
+    return list.sort((a, b) => a.numericNumber - b.numericNumber);
+  }, [anime, onlineChapters]);
+
+  // Current active chapter
+  const currentChapter: UnifiedChapter | undefined = useMemo(() => {
+    if (!allChapters.length) {
+      // Temporary fallback if initial chapters are still parsing
+      const fallbackLocal = anime?.manga?.chapters?.[0];
+      if (fallbackLocal) {
+        return {
+          id: fallbackLocal.id,
+          number: fallbackLocal.number,
+          numericNumber: fallbackLocal.number,
+          title: fallbackLocal.title,
+          pagesCount: fallbackLocal.pagesCount,
+          pages: fallbackLocal.pages,
+          mangadexChapterId: fallbackLocal.mangadexChapterId,
+          source: fallbackLocal.pages && fallbackLocal.pages.length > 0 ? "local" : "mangadex",
+        };
+      }
+      return undefined;
+    }
+
     if (chapterId) {
       return (
-        chapters.find((c) => c.id === chapterId || String(c.number) === chapterId) ||
-        chapters[0]
+        allChapters.find(
+          (c) =>
+            c.id === chapterId ||
+            String(c.number) === chapterId ||
+            c.mangadexChapterId === chapterId
+        ) || allChapters[0]
       );
     }
-    return chapters[0];
-  }, [chapters, chapterId]);
+
+    return allChapters[0];
+  }, [allChapters, chapterId, anime]);
 
   const chapterIndex = useMemo(() => {
     if (!currentChapter) return 0;
-    return chapters.findIndex((c) => c.id === currentChapter.id);
-  }, [chapters, currentChapter]);
+    return allChapters.findIndex((c) => c.id === currentChapter.id);
+  }, [allChapters, currentChapter]);
 
-  const prevChapter = chapterIndex > 0 ? chapters[chapterIndex - 1] : null;
-  const nextChapter =
-    chapterIndex < chapters.length - 1 ? chapters[chapterIndex + 1] : null;
+  const prevChapter = chapterIndex > 0 ? allChapters[chapterIndex - 1] : null;
+  const nextChapter = chapterIndex < allChapters.length - 1 ? allChapters[chapterIndex + 1] : null;
 
-  const [readingMode, setReadingMode] = useState<"vertical" | "single">("vertical");
-  const [currentPageIndex, setCurrentPageIndex] = useState(0);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+  // Resolve pages for the active chapter
+  useEffect(() => {
+    if (!currentChapter) return;
+    let isMounted = true;
+    setIsLoadingPages(true);
+    setPageError(null);
+    setCurrentPageIndex(0);
+
+    // Case 1: Chapter already has pre-bundled local pages (e.g. Solo Leveling 27 pages)
+    if (currentChapter.pages && currentChapter.pages.length > 0) {
+      setResolvedPages(currentChapter.pages);
+      setIsLoadingPages(false);
+      return;
+    }
+
+    // Case 2: Fetch pages from MangaDex / Tomato at-home server
+    const targetChapterId = currentChapter.mangadexChapterId || currentChapter.id;
+    fetchMangaDexChapterPages(targetChapterId, imageQuality)
+      .then((res) => {
+        if (!isMounted) return;
+        if (!res.pages || res.pages.length === 0) {
+          throw new Error("Nenhuma página encontrada para este capítulo.");
+        }
+        setResolvedPages(res.pages);
+      })
+      .catch((err) => {
+        if (!isMounted) return;
+        console.warn("MangaDex page load error:", err);
+        setPageError("Não foi possível carregar as páginas deste capítulo do MangaDex.");
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingPages(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentChapter, imageQuality]);
 
   // Load saved progress
   useEffect(() => {
     if (anime && currentChapter) {
       const saved = getMangaProgress(anime.id);
-      if (saved && saved.chapterNumber === currentChapter.number) {
+      if (saved && saved.chapterNumber === Number(currentChapter.number)) {
         setCurrentPageIndex(saved.pageIndex);
       }
     }
@@ -70,16 +229,16 @@ export const AnimeMangaReader = () => {
   // Save progress on page or chapter change
   useEffect(() => {
     if (anime && currentChapter) {
-      saveMangaProgress(anime.id, currentChapter.number, currentPageIndex);
+      saveMangaProgress(anime.id, Number(currentChapter.number) || 1, currentPageIndex);
     }
   }, [anime, currentChapter, currentPageIndex]);
 
   // Keyboard navigation for single page mode
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!currentChapter) return;
+      if (!currentChapter || !resolvedPages.length) return;
       if (e.key === "ArrowRight" || e.key === " " || e.key === "PageDown") {
-        if (currentPageIndex < currentChapter.pages.length - 1) {
+        if (currentPageIndex < resolvedPages.length - 1) {
           setCurrentPageIndex((p) => p + 1);
         } else if (nextChapter) {
           navigate(`/animes/${anime?.id}/manga/${nextChapter.id}`);
@@ -94,7 +253,7 @@ export const AnimeMangaReader = () => {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [currentPageIndex, currentChapter, nextChapter, prevChapter, anime, navigate]);
+  }, [currentPageIndex, currentChapter, nextChapter, prevChapter, anime, navigate, resolvedPages]);
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -106,13 +265,10 @@ export const AnimeMangaReader = () => {
     }
   };
 
-  if (!anime || !currentChapter) {
+  if (!anime) {
     return (
       <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 text-center">
-        <h2 className="text-xl font-light mb-2">Mangá não encontrado</h2>
-        <p className="text-xs text-white/60 mb-6">
-          Não foi possível carregar os capítulos deste mangá.
-        </p>
+        <h2 className="text-xl font-light mb-2">Anime não encontrado</h2>
         <button
           onClick={() => navigate("/animes")}
           className="px-6 py-2.5 rounded-full bg-primary text-white text-xs uppercase tracking-wider font-medium"
@@ -123,15 +279,13 @@ export const AnimeMangaReader = () => {
     );
   }
 
-  const pages = currentChapter.pages;
-
   return (
     <div
       ref={containerRef}
-      className="min-h-screen bg-[#0d0f12] text-white flex flex-col justify-between selection:bg-primary selection:text-white"
+      className="min-h-screen bg-[#0a0c0f] text-white flex flex-col justify-between selection:bg-primary selection:text-white"
     >
       {/* Sticky Reader Header */}
-      <header className="sticky top-0 z-50 bg-[#12151a]/95 backdrop-blur-md border-b border-white/10 px-4 md:px-8 py-3">
+      <header className="sticky top-0 z-50 bg-[#101318]/95 backdrop-blur-md border-b border-white/10 px-4 md:px-8 py-3">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
             <Link
@@ -145,32 +299,53 @@ export const AnimeMangaReader = () => {
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded bg-primary/20 text-primary font-medium">
-                  Mangá
+                  Mangá Oficial
                 </span>
-                <span className="text-xs text-white/50 truncate font-light">
+                <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-medium hidden sm:inline-flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  MangaDex & Tomato
+                </span>
+                <span className="text-xs text-white/50 truncate font-light hidden md:inline">
                   {anime.title}
                 </span>
               </div>
               <h1 className="text-sm font-medium text-white truncate">
-                {currentChapter.title}
+                {currentChapter ? currentChapter.title : "Carregando..."}
               </h1>
             </div>
           </div>
 
-          {/* Center / Right Controls */}
+          {/* Right Controls */}
           <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
             {/* Chapter Selector Dropdown */}
-            <select
-              value={currentChapter.id}
-              onChange={(e) => navigate(`/animes/${anime.id}/manga/${e.target.value}`)}
-              className="bg-white/10 border border-white/20 text-white text-xs rounded-full px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer max-w-[140px] md:max-w-none truncate"
+            {allChapters.length > 0 && currentChapter && (
+              <select
+                value={currentChapter.id}
+                onChange={(e) => navigate(`/animes/${anime.id}/manga/${e.target.value}`)}
+                className="bg-white/10 border border-white/20 text-white text-xs rounded-full px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer max-w-[140px] md:max-w-[200px] truncate"
+              >
+                {allChapters.map((c) => (
+                  <option key={c.id} value={c.id} className="bg-neutral-900 text-white">
+                    Cap. {c.number} — {c.title} {c.language ? `[${c.language}]` : ""}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {/* Quality Toggle (HD / DataSaver) */}
+            <button
+              type="button"
+              onClick={() => {
+                const nextQ = imageQuality === "data" ? "dataSaver" : "data";
+                setImageQuality(nextQ);
+                toast.info(`Qualidade alterada para ${nextQ === "data" ? "HD Original" : "Econômico (Rápido)"}`);
+              }}
+              className="hidden lg:inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/20 text-[11px] text-white/80 transition-colors"
+              title="Alternar qualidade das páginas"
             >
-              {chapters.map((c) => (
-                <option key={c.id} value={c.id} className="bg-neutral-900 text-white">
-                  Cap. {c.number} — {c.title}
-                </option>
-              ))}
-            </select>
+              <Zap className="h-3 w-3 text-amber-400" />
+              <span>{imageQuality === "data" ? "HD" : "Eco"}</span>
+            </button>
 
             {/* Reading Mode Switcher */}
             <div className="hidden sm:flex items-center bg-white/10 rounded-full p-0.5 text-xs">
@@ -182,7 +357,7 @@ export const AnimeMangaReader = () => {
                     ? "bg-primary text-white font-medium"
                     : "text-white/60 hover:text-white"
                 }`}
-                title="Modo cascata contínua"
+                title="Modo cascata vertical contínua"
               >
                 Cascata
               </button>
@@ -229,22 +404,66 @@ export const AnimeMangaReader = () => {
 
       {/* Reader Main Content */}
       <main className="flex-1 flex flex-col items-center justify-center p-2 sm:p-4 md:py-8 max-w-4xl mx-auto w-full">
-        {readingMode === "vertical" ? (
+        {isLoadingPages ? (
+          <div className="py-24 text-center flex flex-col items-center justify-center">
+            <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
+            <h3 className="text-base font-light text-white mb-1">
+              Carregando páginas oficiais...
+            </h3>
+            <p className="text-xs text-white/50 max-w-sm">
+              Conectando aos servidores MangaDex & Tomato para entregar a resolução máxima do mangá.
+            </p>
+          </div>
+        ) : pageError ? (
+          <div className="py-20 text-center max-w-md mx-auto p-6 rounded-2xl border border-white/10 bg-white/5">
+            <p className="text-sm text-red-400 mb-4">{pageError}</p>
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setImageQuality("dataSaver");
+                  setIsLoadingPages(true);
+                  setPageError(null);
+                }}
+                className="px-4 py-2 rounded-full bg-primary hover:bg-primary/90 text-white text-xs font-medium inline-flex items-center gap-1.5"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                Tentar em Modo Econômico
+              </button>
+              <Link
+                to={`/animes/${anime.id}`}
+                className="px-4 py-2 rounded-full border border-white/20 hover:bg-white/10 text-white text-xs"
+              >
+                Voltar aos Capítulos
+              </Link>
+            </div>
+          </div>
+        ) : resolvedPages.length === 0 ? (
+          <div className="py-20 text-center">
+            <p className="text-sm text-white/60 mb-4">Nenhuma página disponível para este capítulo.</p>
+            <Link
+              to={`/animes/${anime.id}`}
+              className="px-5 py-2 rounded-full bg-primary text-white text-xs uppercase tracking-wider"
+            >
+              Escolher Outro Capítulo
+            </Link>
+          </div>
+        ) : readingMode === "vertical" ? (
           /* Cascading Continuous Vertical Scroll Mode */
           <div className="w-full space-y-3 md:space-y-4">
-            {pages.map((pageUrl, idx) => (
+            {resolvedPages.map((pageUrl, idx) => (
               <div
                 key={idx}
                 className="relative bg-black rounded-lg overflow-hidden shadow-2xl border border-white/5 mx-auto max-w-2xl"
               >
                 <img
                   src={pageUrl}
-                  alt={`Página ${idx + 1} de ${currentChapter.title}`}
+                  alt={`Página ${idx + 1} de ${currentChapter?.title || 'Mangá'}`}
                   className="w-full h-auto object-contain block select-none"
                   loading="lazy"
                 />
                 <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-black/70 backdrop-blur-sm text-[10px] text-white/70 font-mono">
-                  {idx + 1} / {pages.length}
+                  {idx + 1} / {resolvedPages.length}
                 </span>
               </div>
             ))}
@@ -254,11 +473,11 @@ export const AnimeMangaReader = () => {
           <div className="w-full flex flex-col items-center">
             <div className="relative bg-black rounded-xl overflow-hidden shadow-2xl border border-white/10 max-w-2xl w-full aspect-[2/3] flex items-center justify-center group">
               <img
-                src={pages[currentPageIndex]}
+                src={resolvedPages[currentPageIndex]}
                 alt={`Página ${currentPageIndex + 1}`}
                 className="w-full h-full object-contain select-none cursor-pointer"
                 onClick={() => {
-                  if (currentPageIndex < pages.length - 1) {
+                  if (currentPageIndex < resolvedPages.length - 1) {
                     setCurrentPageIndex((p) => p + 1);
                   }
                 }}
@@ -277,16 +496,16 @@ export const AnimeMangaReader = () => {
               <button
                 type="button"
                 onClick={() =>
-                  setCurrentPageIndex((p) => Math.min(pages.length - 1, p + 1))
+                  setCurrentPageIndex((p) => Math.min(resolvedPages.length - 1, p + 1))
                 }
-                disabled={currentPageIndex === pages.length - 1}
+                disabled={currentPageIndex === resolvedPages.length - 1}
                 className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-black/60 hover:bg-black/90 text-white disabled:opacity-20 transition-all opacity-0 group-hover:opacity-100"
               >
                 <ChevronRight className="h-6 w-6" />
               </button>
 
               <div className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-black/80 backdrop-blur-md text-xs text-white/90 font-mono">
-                Página {currentPageIndex + 1} de {pages.length}
+                Página {currentPageIndex + 1} de {resolvedPages.length}
               </div>
             </div>
 
@@ -298,76 +517,78 @@ export const AnimeMangaReader = () => {
                 disabled={currentPageIndex === 0}
                 className="px-4 py-2 rounded-full border border-white/20 bg-white/5 hover:bg-white/15 text-xs text-white disabled:opacity-30 transition-colors"
               >
-                ← Página Anterior
+                ← Anterior
               </button>
 
               <span className="text-xs text-white/70 font-mono">
-                {currentPageIndex + 1} / {pages.length}
+                {currentPageIndex + 1} / {resolvedPages.length}
               </span>
 
               <button
                 type="button"
                 onClick={() =>
-                  setCurrentPageIndex((p) => Math.min(pages.length - 1, p + 1))
+                  setCurrentPageIndex((p) => Math.min(resolvedPages.length - 1, p + 1))
                 }
-                disabled={currentPageIndex === pages.length - 1}
+                disabled={currentPageIndex === resolvedPages.length - 1}
                 className="px-4 py-2 rounded-full border border-white/20 bg-white/5 hover:bg-white/15 text-xs text-white disabled:opacity-30 transition-colors"
               >
-                Próxima Página →
+                Próxima →
               </button>
             </div>
           </div>
         )}
 
         {/* Chapter Bottom Navigation Bar */}
-        <div className="w-full max-w-2xl mt-12 pt-8 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
-          {prevChapter ? (
-            <Link
-              to={`/animes/${anime.id}/manga/${prevChapter.id}`}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full border border-white/20 hover:bg-white/10 text-xs font-medium text-white transition-colors"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              <span>Capítulo Anterior ({prevChapter.number})</span>
-            </Link>
-          ) : (
-            <div className="hidden sm:block" />
-          )}
+        {currentChapter && (
+          <div className="w-full max-w-2xl mt-12 pt-8 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
+            {prevChapter ? (
+              <Link
+                to={`/animes/${anime.id}/manga/${prevChapter.id}`}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full border border-white/20 hover:bg-white/10 text-xs font-medium text-white transition-colors"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                <span>Capítulo Anterior ({prevChapter.number})</span>
+              </Link>
+            ) : (
+              <div className="hidden sm:block" />
+            )}
 
-          <div className="text-center">
-            <span className="text-[11px] text-white/50 block mb-1">
-              Você está lendo:
-            </span>
-            <span className="text-xs font-medium text-white">
-              Capítulo {currentChapter.number} de {chapters.length}
-            </span>
+            <div className="text-center">
+              <span className="text-[11px] text-white/50 block mb-1">
+                Você está lendo:
+              </span>
+              <span className="text-xs font-medium text-white">
+                Capítulo {currentChapter.number} de {allChapters.length}
+              </span>
+            </div>
+
+            {nextChapter ? (
+              <Link
+                to={`/animes/${anime.id}/manga/${nextChapter.id}`}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-primary hover:bg-primary/90 text-xs font-medium text-white transition-colors shadow-lg"
+              >
+                <span>Próximo Capítulo ({nextChapter.number})</span>
+                <ChevronRight className="h-4 w-4" />
+              </Link>
+            ) : (
+              <Link
+                to={`/animes/${anime.id}`}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-white/20 hover:bg-white/30 text-xs font-medium text-white transition-colors"
+              >
+                <span>Voltar aos Detalhes</span>
+              </Link>
+            )}
           </div>
-
-          {nextChapter ? (
-            <Link
-              to={`/animes/${anime.id}/manga/${nextChapter.id}`}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-primary hover:bg-primary/90 text-xs font-medium text-white transition-colors shadow-lg"
-            >
-              <span>Próximo Capítulo ({nextChapter.number})</span>
-              <ChevronRight className="h-4 w-4" />
-            </Link>
-          ) : (
-            <Link
-              to={`/animes/${anime.id}`}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-white/20 hover:bg-white/30 text-xs font-medium text-white transition-colors"
-            >
-              <span>Voltar aos Detalhes</span>
-            </Link>
-          )}
-        </div>
+        )}
       </main>
 
       {/* Footer bar with quick action to watch anime episode */}
-      <footer className="bg-[#12151a]/95 border-t border-white/10 py-4 px-6 mt-12">
+      <footer className="bg-[#101318]/95 border-t border-white/10 py-4 px-6 mt-12">
         <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-white/70">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" />
             <span>
-              Curtiu a história? Assista à animação completa com áudio e legendas.
+              Curtiu a história? Assista à animação oficial com áudio e legendas.
             </span>
           </div>
 

@@ -15,6 +15,7 @@ import {
   Landmark,
   Globe,
   Atom,
+  Dribbble,
 } from "lucide-react";
 
 interface Props {
@@ -33,6 +34,7 @@ const CATEGORY_ICONS: Record<string, React.ComponentType<{ className?: string }>
   Games: Gamepad2,
   Cultura: Sparkles,
   Futebol: Trophy,
+  Basquete: Dribbble,
   Mercado: TrendingUp,
   Virais: Flame,
   Listas: ListOrdered,

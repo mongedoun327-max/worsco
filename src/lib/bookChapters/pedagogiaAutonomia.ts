@@ -5,124 +5,119 @@ export const PEDAGOGIA_AUTONOMIA_CHAPTERS: ModernChapter[] = [
     id: "ped-cap-1",
     book_id: "mod-pedagogia-da-autonomia",
     position: 1,
-    title: "Capítulo 1: Não Há Docência Sem Discência — Quem Ensina Aprende ao Ensinar",
+    title: "Capítulo I — Não Há Docência Sem Discência: As Primeiras Nove Exigências",
     is_free_preview: true,
-    content: `### Não Há Docência Sem Discência
+    content: `### Não Há Docência Sem Discência: Os Fundamentos da Prática Educativa
 
-O ponto de partida da pedagogia libertadora de Paulo Freire é a desconstrução da ilusão autoritária de que o professor é o detentor exclusivo do saber e o aluno uma tábula rasa passiva:
+A reflexão de Paulo Freire em *Pedagogia da Autonomia* parte de um princípio epistemológico basilar: a desconstrução radical da ilusão autoritária de que quem ensina é detentor absoluto do saber e quem aprende é um receptáculo vazio e passivo.
 
-> **"Não há docência sem discência; as duas se explicam e seus sujeitos, apesar das diferenças que os conotam, não se reduzem à condição de objeto um do outro. Quem ensina, aprende ao ensinar, e quem aprende, ensina ao aprender."**
+> **"Não há docência sem discência; as duas se explicam e seus sujeitos, apesar das diferenças que os conotam, não se reduzem à condição de objeto um do outro. Quem ensina aprende ao ensinar, e quem aprende ensina ao aprender."**
 
-Ensinar inexiste sem aprender e vice-versa. O ato educativo é um encontro dialógico entre dois seres humanos que se educam mutuamente mediadas pelo mundo real. O educador que se recusa a aprender com as vivências e a cultura de seus alunos mumifica sua própria prática e trai a vocação ontológica do ser humano.`,
+A prática docente genuína estrutura-se sobre nove exigências ético-metodológicas constitutivas:
+
+#### 1. Ensinar exige rigorosidade metódica
+A rigorosidade metódica de que fala Freire nada tem a ver com o formalismo frio ou o cumprimento mecânico de ementas burocráticas. Ela consiste na capacidade do educador de conduzir os alunos da **curiosidade ingênua** (o saber do senso comum, desarmado de instrumental reflexivo) para a **curiosidade epistemológica**, que busca as razões explicativas e as causas profundas dos fenômenos.
+
+#### 2. Ensinar exige pesquisa
+Não há ensino sem pesquisa e pesquisa sem ensino. Ensino porque busco, porque indaguei, porque indago e me indago. Pesquiso para constatar, constatando intervenho, intervindo educo e me educo. A aula que repete fórmulas sem problematizar a realidade mumifica o pensamento.
+
+#### 3. Ensinar exige respeito aos saberes dos educandos
+Por que não discutir com os alunos as razões da poluição dos rios e córregos a partir do lixo acumulado nas encostas do bairro onde vivem? Respeitar a leitura de mundo com que o aluno chega à escola é a primeira condição para que ele possa reconstruí-la em bases críticas mais amplas.
+
+#### 4. Ensinar exige criticidade
+A curiosidade ingênua, ao criticizar-se, torna-se curiosidade epistemológica. O educador não impõe verdades; cria as condições de possibilidade para que o aluno experimente a aventura da dúvida metódica e da investigação rigorosa.
+
+#### 5. Ensinar exige estética e ética
+A formação científica e técnica não pode ser dissociada da decência moral e da sensibilidade estética. Uma educação que ensina a calcular equações complexas mas se cala perante a degradação humana e a miséria social forma tecnocratas insensíveis e perpetuadores da barbárie.
+
+#### 6. Ensinar exige a corporeificação das palavras pelo exemplo
+O professor autoritário que faz belos discursos sobre a liberdade e a democracia enquanto governa a sala de aula pelo medo e pela humilhação ensina o oposto do que declara. Não há pedagogia mais eficaz do que o testemunho vivo da coerência entre o que se fala e o que se faz.
+
+#### 7. Ensinar exige risco, aceitação do novo e rejeição a qualquer discriminação
+A prática educativa é intrinsecamente aberta ao imprevisível. Rejeitar terminantemente toda forma de preconceito de raça, de gênero, de classe ou de origem regional é um imperativo moral do qual nenhum educador digno pode se esquivar.
+
+#### 8. Ensinar exige reflexão crítica sobre a prática
+O educador que não reflete cotidianamente sobre sua própria atuação em sala de aula fossiliza sua prática. É pensando criticamente a prática de hoje ou de ontem que se pode melhorar a prática de amanhã.
+
+#### 9. Ensinar exige o reconhecimento e a assunção da identidade cultural
+Ninguém constrói autonomia se for forçado a ter vergonha de sua fala, do seu sotaque, de suas raízes e de sua classe social. Assumir-se como sujeito histórico é o primeiro passo da emancipação cidadã.`,
   },
   {
     id: "ped-cap-2",
     book_id: "mod-pedagogia-da-autonomia",
     position: 2,
-    title: "Capítulo 2: Ensinar Exige Rigorosidade Metódica e Pesquisa",
+    title: "Capítulo II — Ensinar Não é Transferir Conhecimento: A Prática Dialógica",
     is_free_preview: true,
-    content: `### Rigorosidade Metódica e o Educador-Pesquisador
+    content: `### Ensinar Não é Transferir Conhecimento: A Superação da Educação Bancária
 
-A verdadeira docência não se confunde com o improviso negligente ou o mero 'dar aulas' burocrático:
+Saber que ensinar não é depositar pacotes de dados na mente dos educandos é o postulado mais revolucionário e transformador de Paulo Freire. Naquilo que o autor consagrou como **Educação Bancária**, o professor atua como um depositante e o aluno como uma caderneta passiva de poupança.
 
-> **"Não há ensino sem pesquisa e pesquisa sem ensino. Ensino porque busco, porque indaguei, porque indago e me indago."**
+Contra essa aberração domesticadora, a pedagogia libertadora ergue outras nove exigências capitais:
 
-A rigorosidade metódica de Freire nada tem a ver com a frieza tecnicista; ela reside na capacidade do professor de conduzir os educandos da curiosidade ingênua (do senso comum acrítico) para a **curiosidade epistemológica**, que interroga as causas profundas dos fenômenos sociais, econômicos e científicos.`,
+#### 1. Ensinar exige a consciência do inacabamento
+O ser humano é um ser inconcluso, inacabado e historicamente condicionado. É precisamente porque nos sabemos incompletos que nos tornamos seres educáveis. Os animais adaptam-se biologicamente ao meio; o ser humano transforma o mundo e a si mesmo pela práxis.
+
+#### 2. Ensinar exige o reconhecimento de ser condicionado
+Não somos determinados; somos condicionados. A história não é um destino inexorável, mas tempo de possibilidade. A miséria, a fome e o desemprego não são fatalidades cósmicas ou castigos divinos, mas construções sociais e políticas que podem e devem ser desmontadas pela ação organizada.
+
+#### 3. Ensinar exige respeito à autonomia do ser do educando
+O respeito à dignidade e à autonomia do aluno não é favor que o professor lhe presta, mas um dever moral inegociável. O educador que ironiza a pergunta de um jovem ou que tenta moldá-lo à sua própria imagem comete uma violência pedagógica imperdoável.
+
+#### 4. Ensinar exige bom senso
+O bom senso pedagógico adverte o professor contra arroubos tirânicos, contra a negligência complacente e contra a tentação de transformar a sala de aula em um tribunal particular de vaidades intelectuais.
+
+#### 5. Ensinar exige humildade, tolerância e luta em defesa dos direitos dos educadores
+A humildade não é submissão covarde; é a virtude de saber que não sei tudo e de estar disposto a dialogar francamente com quem sabe coisas diferentes. A tolerância genuína é a coexistência combativa com o diferente, jamais a conivência covarde com o intolerável e a injustiça.
+
+#### 6. Ensinar exige a apreensão da realidade
+Aprender não é memorizar a grafia mecânica das palavras; é ler a realidade para transformá-la. A decodificação de um texto só adquire sentido quando dialoga com as condições materiais e existenciais do sujeito.
+
+#### 7. Ensinar exige alegria e esperança
+Não há educação autêntica no clima de cinismo, amargura e desesperança. A esperança em Freire não é a espera passiva do verbo *esperar*, mas a postura ativa do verbo *esperançar*: ir atrás, construir, juntar forças e lutar pelo inédito viável.
+
+#### 8. Ensinar exige a convicção de que mudar é difícil, mas é possível
+O discurso fatalista da globalização neoliberal prega que o desemprego é inevitável e que as leis de mercado estão acima da dignidade humana. A pedagogia crítica recusa veementemente esse determinismo paralisante: a história foi feita por seres humanos e por seres humanos pode ser reescrita.
+
+#### 9. Ensinar exige curiosidade
+A curiosidade que indaga, que desconfia das aparências, que não se contenta com explicações superficiais é o motor primordial da ciência, da filosofia e da cidadania democrática.`,
   },
   {
     id: "ped-cap-3",
     book_id: "mod-pedagogia-da-autonomia",
     position: 3,
-    title: "Capítulo 3: Ensinar Exige Respeito aos Saberes dos Educandos",
+    title: "Capítulo III — Ensinar é uma Especificidade Humana: Autoridade, Liberdade e Escuta",
     is_free_preview: true,
-    content: `### O Respeito ao Saber Popular e à Experiência Comunitária
+    content: `### Ensinar é uma Especificidade Humana: A Dialética da Libertação
 
-Por que não aproveitar a experiência que têm os alunos de classes populares com as dificuldades de seus bairros, a falta de saneamento, a violência policial ou as enchentes para discutir a poluição dos rios, a geografia urbana e a cidadania?
+No terceiro e culminante estágio de *Pedagogia da Autonomia*, Paulo Freire aprofunda a dimensão política, afetiva e comunicacional do ato pedagógico, revelando as últimas nove exigências do educador comprometido:
 
-Respeitar os saberes com que os educandos chegam à escola não é populismo demagógico; é o dever pedagógico elementar de validar a humanidade e a dignidade de quem vive à margem. O ponto de partida do ensino deve ser sempre a realidade concreta do educando, para que ele possa compreendê-la e transformá-la criticamente.`,
-  },
-  {
-    id: "ped-cap-4",
-    book_id: "mod-pedagogia-da-autonomia",
-    position: 4,
-    title: "Capítulo 4: Ensinar Exige Criticidade, Estética e Ética",
-    is_free_preview: true,
-    content: `### A Inseparabilidade entre Ética e Prática Pedagógica
+#### 1. Ensinar exige segurança, competência profissional e generosidade
+Não há autoridade docente sem competência técnica e científica. O professor que não estuda, que não prepara suas aulas com esmero e rigor perde a autoridade moral perante a turma. Contudo, essa competência deve ser acompanhada por generosidade de coração, jamais pela soberba arrogante.
 
-A prática educativa não é neutra; ela é intrinsecamente política e ética.
-Não é possível dissociar a formação técnica e científica da formação ética dos educandos. Uma educação que ensina a calcular equações complexas mas se omite diante da injustiça e da degradação humana mutila a alma do educando.
+#### 2. Ensinar exige compromisso
+Não é possível atuar como educador de maneira neutra e indiferente. O ato pedagógico é sempre uma intervenção no mundo. Estar comprometido significa posicionar-se ao lado dos direitos fundamentais, da justiça social e da emancipação humana.
 
-A beleza da docência reside no casamento indissolúvel entre a **rigorosidade científica** e a **decência moral**. O professor não pode pregar solidariedade na lousa e humilhar o aluno em sala com sarcasmo e arrogância: a coerência entre o que se fala e o que se faz é a maior lição ética.`,
-  },
-  {
-    id: "ped-cap-5",
-    book_id: "mod-pedagogia-da-autonomia",
-    position: 5,
-    title: "Capítulo 5: Ensinar Exige a Corporeificação das Palavras Pelo Exemplo",
-    is_free_preview: true,
-    content: `### O Testemunho e a Corporeificação do Discurso
+#### 3. Ensinar exige compreender que educar é uma forma de intervenção no mundo
+Toda intervenção pedagógica traz consigo uma carga ideológica implícita ou explícita: ou ela reproduz os mecanismos de dominação e docilização das classes subalternas, ou ela desperta a consciência crítica e instrumentaliza o cidadão para a conquista de sua dignidade.
 
-O professor autoritário que grita exigindo obediência ou que faz discursos inflamados sobre democracia enquanto governa a sala com mão de ferro ensina o oposto do que diz.
+#### 4. Ensinar exige liberdade e autoridade
+A verdadeira autoridade não se confunde com o **autoritarismo**, assim como a liberdade autêntica nada tem a ver com a **licenciosidade**. O autoritarismo esmaga a iniciativa dos alunos; a licenciosidade abandona-os à própria sorte sem referências orientadoras. A autoridade democrática constrói-se na firmeza respeitosa dos limites claros e no incentivo permanente à autonomia responsável.
 
-> **"O professor que realmente ensina compromete-se com a sua prática através do seu testemunho pessoal. Não há nada mais pedagógico do que a coerência viva entre o falar e o fazer."**
+#### 5. Ensinar exige tomada consciente de decisões
+Educar implica escolhas constantes: o que priorizar no currículo? Como avaliar com justiça? Como lidar com conflitos em sala? O educador assume a responsabilidade pelas consequências éticas e políticas de suas escolhas pedagógicas.
 
-O clima da sala de aula precisa ser um espaço onde o erro não é pecado a ser punido, mas um momento fecundo de investigação e reconstrução do conhecimento.`,
-  },
-  {
-    id: "ped-cap-6",
-    book_id: "mod-pedagogia-da-autonomia",
-    position: 6,
-    title: "Capítulo 6: Ensinar Não é Transferir Conhecimento — A Crítica à Educação Bancária",
-    is_free_preview: true,
-    content: `### A Superação da Educação Bancária
+#### 6. Ensinar exige saber escutar
+Saber escutar é a virtude mestra do educador dialógico. Escutar não é simplesmente ouvir os sons físicos emitidos pelo outro, mas abrir-se à alteridade, acolher as dúvidas e inquietações dos educandos e renunciar à tentação de impor monólogos magistrais. Quem só fala e nunca escuta não educa: doutrina.
 
-Saber que ensinar não é transferir conhecimento é o postulado mais revolucionário de Paulo Freire.
+#### 7. Ensinar exige reconhecer que a educação é ideológica
+Nenhum sistema de ensino é desinteressado. Desmascarar as ideologias dominantes que naturalizam a opressão e o preconceito é tarefa insubstituível da formação cidadã.
 
-Na **Educação Bancária**, o educador deposita conteúdos na cabeça do aluno como se este fosse uma caderneta de poupança vazia, esperando que ele decore fórmulas para repeti-las em uma prova mecânica. Esse modelo domestica e anestesia a consciência crítica.
+#### 8. Ensinar exige disponibilidade para o diálogo
+O diálogo não é mera técnica pedagógica ou recurso didático; é a postura existencial de quem compreende que o conhecimento é uma construção coletiva mediada pela palavra e pela ação transformadora no mundo.
 
-Na **Educação Libertadora**, o educador não transfere pacotes prontos de saber; ele **cria as condições para que o educando produza e construa o seu próprio conhecimento**. Aprender é um ato criador e libertador.`,
-  },
-  {
-    id: "ped-cap-7",
-    book_id: "mod-pedagogia-da-autonomia",
-    position: 7,
-    title: "Capítulo 7: Ensinar Exige a Consciência do Inacabamento Humano",
-    is_free_preview: true,
-    content: `### O Inacabamento e a Esperança
+#### 9. Ensinar exige querer bem aos educandos
+Freire encerra sua obra com uma das mais belas declarações da pedagogia mundial: o afeto não contamina a rigorosidade científica; antes, ilumina-a. Amar o processo educativo, ter afeto genuíno pelos educandos e acreditar na sua capacidade ilimitada de superação é o que distingue o mestre vocacionado do burocrata do ensino.
 
-O ser humano é, por sua própria natureza biológica e ontológica, um **ser inacabado e inconcluso**.
-Diferentemente dos animais (que operam por instintos programados), o homem tem consciência do seu próprio inacabamento e sabe que está sempre no processo de *vir a ser*.
-
-É exatamente dessa consciência do inacabamento que nascem:
-- A educação permanente ao longo de toda a vida.
-- A esperança como imperativo ético (o futuro não é um destino inexorável pré-escrito; o futuro é um campo aberto de possibilidades a ser construído por nossas escolhas).
-- A indignação santa contra qualquer forma de opressão que tente desumanizar o outro.`,
-  },
-  {
-    id: "ped-cap-8",
-    book_id: "mod-pedagogia-da-autonomia",
-    position: 8,
-    title: "Capítulo 8: Ensinar Exige o Reconhecimento da Identidade Cultural",
-    is_free_preview: true,
-    content: `### Identidade Cultural e Afetividade
-
-A prática educativa exige o reconhecimento afetuoso da identidade cultural dos educandos: seu sotaque, sua gíria de bairro, sua culinária, suas festas e suas memórias comunitárias.
-
-Ensinar a norma culta da língua portuguesa é dever da escola cidadã para dar ferramentas de inserção aos jovens; mas isso jamais deve ser feito ridicularizando a linguagem materna ou o falar regional de suas mães e avós. A verdadeira autoridade docente é amorosa, dialógica e inclusiva.`,
-  },
-  {
-    id: "ped-cap-9",
-    book_id: "mod-pedagogia-da-autonomia",
-    position: 9,
-    title: "Capítulo 9: Ensinar Exige Esperança, Alegria e a Certeza de que Mudar é Possível",
-    is_free_preview: true,
-    content: `### A Pedagogia da Esperança e da Autonomia
-
-O livro encerra com uma defesa apaixonada da esperança contra o cinismo fatalista neoliberal que diz: *"O mundo é assim mesmo, o desemprego é inevitável, a pobreza sempre existiu e nada pode ser feito"*.
-
-Freire responde com vigor profético:
-> **"A História é um tempo de possibilidade e não de determinismo. Se a realidade foi construída por homens, ela pode ser transformada por homens através da união, da consciência e da educação crítica."**
-
-A autonomia do educando é o horizonte sagrado de todo verdadeiro mestre. Educar é um ato de coragem, amor ao próximo e fé inabalável na dignidade da pessoa humana.`,
+> **"A educação não transforma o mundo. A educação muda as pessoas. As pessoas transformam o mundo."**`,
   },
 ];

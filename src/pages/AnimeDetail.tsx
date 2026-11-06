@@ -10,6 +10,7 @@ import {
   isAnimeInWatchlist,
   toggleAnimeWatchlist,
 } from "@/lib/animes";
+import { fetchMangaDexChapters, MangaDexChapter } from "@/lib/mangadex";
 import { useContentProtection } from "@/hooks/useContentProtection";
 import {
   Play,
@@ -26,6 +27,9 @@ import {
   BookOpen,
   Sparkles,
   ArrowRight,
+  Globe,
+  Loader2,
+  ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -44,6 +48,11 @@ export const AnimeDetail = () => {
   const [isPlayingTrailer, setIsPlayingTrailer] = useState(false);
   const [playerAnime, setPlayerAnime] = useState<Anime | null>(null);
 
+  // MangaDex & Tomato Live Chapter State
+  const [onlineChapters, setOnlineChapters] = useState<MangaDexChapter[]>([]);
+  const [isLoadingChapters, setIsLoadingChapters] = useState(false);
+  const [mangaLangFilter, setMangaLangFilter] = useState<"pt-br" | "en" | "all">("pt-br");
+
   useEffect(() => {
     if (anime) {
       setInWatchlist(isAnimeInWatchlist(anime.id));
@@ -52,6 +61,29 @@ export const AnimeDetail = () => {
       return () => window.removeEventListener("worscoi_watchlist_updated", handleUpdate);
     }
   }, [anime]);
+
+  // Fetch real chapters from MangaDex and Tomato engine
+  useEffect(() => {
+    if (!anime?.manga?.mangadexId) return;
+    let isMounted = true;
+    setIsLoadingChapters(true);
+
+    fetchMangaDexChapters(anime.manga.mangadexId, mangaLangFilter)
+      .then((chList) => {
+        if (!isMounted) return;
+        setOnlineChapters(chList);
+      })
+      .catch((err) => {
+        console.warn("Failed to load MangaDex chapters:", err);
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingChapters(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [anime?.manga?.mangadexId, mangaLangFilter]);
 
   const relatedAnimes = useMemo(() => {
     if (!anime) return [];
@@ -462,86 +494,208 @@ export const AnimeDetail = () => {
                   <img
                     src={anime.manga?.cover || anime.cover}
                     alt={anime.manga?.title || anime.title}
-                    className="w-28 aspect-[3/4] object-cover rounded-xl shadow-lg border border-border flex-shrink-0"
+                    className="w-32 aspect-[3/4] object-cover rounded-xl shadow-xl border border-border flex-shrink-0"
                   />
                   <div className="flex-1 text-center sm:text-left">
-                    <span className="text-[11px] uppercase tracking-wider text-primary font-medium mb-1 block">
-                      Obra Original • {anime.manga?.status}
-                    </span>
+                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mb-2">
+                      <span className="text-[11px] uppercase tracking-wider text-primary font-medium px-2 py-0.5 rounded bg-primary/10">
+                        Obra Original • {anime.manga?.status}
+                      </span>
+                      <span className="text-[11px] uppercase tracking-wider text-emerald-500 font-medium px-2 py-0.5 rounded bg-emerald-500/10 flex items-center gap-1">
+                        <Sparkles className="h-3 w-3" />
+                        MangaDex & Tomato Hub
+                      </span>
+                    </div>
+
                     <h3 className="text-xl md:text-2xl font-light text-foreground tracking-tight mb-2">
                       {anime.manga?.title}
                     </h3>
-                    <p className="text-xs text-muted-foreground font-light mb-4">
-                      Roteiro por <strong className="text-foreground">{anime.manga?.author}</strong> • Arte por <strong className="text-foreground">{anime.manga?.artist}</strong>
+                    <p className="text-xs text-muted-foreground font-light mb-1">
+                      Roteiro: <strong className="text-foreground">{anime.manga?.author}</strong> • Arte: <strong className="text-foreground">{anime.manga?.artist}</strong>
                     </p>
-                    {firstMangaChapter && (
-                      <Link
-                        to={`/animes/${anime.id}/manga/${firstMangaChapter.id}`}
-                        className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-primary hover:bg-primary/90 text-white text-xs font-medium uppercase tracking-wider transition-colors shadow-soft"
-                      >
-                        <BookOpen className="h-4 w-4" />
-                        Começar do Capítulo 1
-                      </Link>
+                    {anime.manga?.serialization && (
+                      <p className="text-xs text-muted-foreground font-light mb-4">
+                        Serialização: <strong className="text-foreground">{anime.manga.serialization}</strong>
+                      </p>
                     )}
+
+                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3">
+                      {firstMangaChapter && (
+                        <Link
+                          to={`/animes/${anime.id}/manga/${onlineChapters[0]?.id || firstMangaChapter.id}`}
+                          className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-primary hover:bg-primary/90 text-white text-xs font-medium uppercase tracking-wider transition-colors shadow-soft"
+                        >
+                          <BookOpen className="h-4 w-4" />
+                          Começar do Capítulo 1
+                        </Link>
+                      )}
+                      {anime.manga?.mangadexId && (
+                        <a
+                          href={`https://mangadex.org/title/${anime.manga.mangadexId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-secondary hover:bg-secondary/80 text-foreground text-xs font-light transition-colors"
+                        >
+                          <Globe className="h-3.5 w-3.5 text-primary" />
+                          <span>Ver no MangaDex</span>
+                          <ExternalLink className="h-3 w-3 opacity-60" />
+                        </a>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                {/* Chapters List */}
+                {/* Chapters List Section */}
                 <div className="mb-12">
-                  <div className="flex items-center justify-between mb-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                     <div>
-                      <h3 className="text-xl font-light text-foreground">
-                        Capítulos do Mangá
+                      <h3 className="text-xl font-light text-foreground flex items-center gap-2">
+                        <span>Capítulos do Mangá</span>
+                        {isLoadingChapters && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
                       </h3>
                       <p className="text-xs text-muted-foreground font-light">
-                        {anime.manga?.chapters.length || 0} capítulos prontos para leitura online no navegador
+                        {onlineChapters.length > 0
+                          ? `${onlineChapters.length} capítulos oficiais sincronizados via MangaDex & Tomato`
+                          : `${anime.manga?.chapters.length || 0} capítulos preparados para leitura imediata`}
                       </p>
+                    </div>
+
+                    {/* Language Filter */}
+                    <div className="flex items-center gap-1 bg-card border border-border p-1 rounded-full text-xs">
+                      <button
+                        type="button"
+                        onClick={() => setMangaLangFilter("pt-br")}
+                        className={`px-3 py-1 rounded-full transition-colors ${
+                          mangaLangFilter === "pt-br"
+                            ? "bg-primary text-white font-medium"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        🇧🇷 Português (PT-BR)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setMangaLangFilter("en")}
+                        className={`px-3 py-1 rounded-full transition-colors ${
+                          mangaLangFilter === "en"
+                            ? "bg-primary text-white font-medium"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        🇺🇸 Inglês (EN)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setMangaLangFilter("all")}
+                        className={`px-3 py-1 rounded-full transition-colors ${
+                          mangaLangFilter === "all"
+                            ? "bg-primary text-white font-medium"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        🌐 Todos
+                      </button>
                     </div>
                   </div>
 
-                  <div className="space-y-3">
-                    {(anime.manga?.chapters || []).map((chapter) => (
-                      <div
-                        key={chapter.id}
-                        className="p-4 rounded-xl border border-border bg-card hover:bg-accent/40 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
-                      >
-                        <div className="flex items-center gap-4 min-w-0">
-                          <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary flex-shrink-0 font-mono font-medium text-sm">
-                            #{chapter.number}
-                          </div>
-
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2 mb-0.5">
-                              <h4 className="text-sm font-medium text-foreground group-hover:text-primary transition-colors truncate">
-                                {chapter.title}
-                              </h4>
-                              {chapter.isFree && (
-                                <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.2 rounded bg-green-500/10 text-green-600 font-medium flex-shrink-0">
-                                  Livre
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-xs text-muted-foreground font-light line-clamp-1">
-                              {chapter.description}
-                            </p>
-                            <span className="text-[10px] text-muted-foreground/80 mt-1 block">
-                              {chapter.pagesCount} páginas • {chapter.releaseDate}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="flex-shrink-0 self-end sm:self-center">
-                          <Link
-                            to={`/animes/${anime.id}/manga/${chapter.id}`}
-                            className="inline-flex items-center gap-1.5 px-5 py-2 rounded-full bg-secondary hover:bg-primary hover:text-white text-foreground text-xs font-medium transition-colors"
+                  {isLoadingChapters && onlineChapters.length === 0 ? (
+                    <div className="p-12 text-center rounded-2xl border border-dashed border-border bg-card/50 flex flex-col items-center justify-center">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
+                      <p className="text-sm font-light text-foreground">
+                        Sincronizando capítulos oficiais com servidores MangaDex e Tomato...
+                      </p>
+                      <span className="text-xs text-muted-foreground mt-1">
+                        Carregando volumes, scans e páginas traduzidas
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {/* Priority: If Online Chapters exist, render them */}
+                      {onlineChapters.length > 0 ? (
+                        onlineChapters.map((chapter) => (
+                          <div
+                            key={chapter.id}
+                            className="p-4 rounded-xl border border-border bg-card hover:bg-accent/40 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
                           >
-                            <span>Ler Capítulo</span>
-                            <ArrowRight className="h-3.5 w-3.5" />
-                          </Link>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                            <div className="flex items-center gap-4 min-w-0">
+                              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary flex-shrink-0 font-mono font-medium text-sm">
+                                #{chapter.number}
+                              </div>
+
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2 mb-0.5">
+                                  <h4 className="text-sm font-medium text-foreground group-hover:text-primary transition-colors truncate">
+                                    {chapter.title}
+                                  </h4>
+                                  <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.2 rounded bg-primary/10 text-primary font-medium flex-shrink-0">
+                                    {chapter.translatedLanguage.toUpperCase()}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-muted-foreground font-light line-clamp-1">
+                                  Scan / Grupo: <strong className="text-foreground">{chapter.scanlationGroup}</strong>
+                                </p>
+                                <span className="text-[10px] text-muted-foreground/80 mt-1 block">
+                                  {chapter.pagesCount > 0 ? `${chapter.pagesCount} páginas • ` : ""}
+                                  Lançamento: {chapter.publishAt}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex-shrink-0 self-end sm:self-center">
+                              <Link
+                                to={`/animes/${anime.id}/manga/${chapter.id}`}
+                                className="inline-flex items-center gap-1.5 px-5 py-2 rounded-full bg-secondary hover:bg-primary hover:text-white text-foreground text-xs font-medium transition-colors"
+                              >
+                                <span>Ler Capítulo</span>
+                                <ArrowRight className="h-3.5 w-3.5" />
+                              </Link>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        /* Fallback to local chapters */
+                        (anime.manga?.chapters || []).map((chapter) => (
+                          <div
+                            key={chapter.id}
+                            className="p-4 rounded-xl border border-border bg-card hover:bg-accent/40 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
+                          >
+                            <div className="flex items-center gap-4 min-w-0">
+                              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary flex-shrink-0 font-mono font-medium text-sm">
+                                #{chapter.number}
+                              </div>
+
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2 mb-0.5">
+                                  <h4 className="text-sm font-medium text-foreground group-hover:text-primary transition-colors truncate">
+                                    {chapter.title}
+                                  </h4>
+                                  <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.2 rounded bg-green-500/10 text-green-600 font-medium flex-shrink-0">
+                                    HD Original
+                                  </span>
+                                </div>
+                                <p className="text-xs text-muted-foreground font-light line-clamp-1">
+                                  {chapter.description}
+                                </p>
+                                <span className="text-[10px] text-muted-foreground/80 mt-1 block">
+                                  {chapter.pagesCount} páginas • {chapter.releaseDate}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex-shrink-0 self-end sm:self-center">
+                              <Link
+                                to={`/animes/${anime.id}/manga/${chapter.id}`}
+                                className="inline-flex items-center gap-1.5 px-5 py-2 rounded-full bg-secondary hover:bg-primary hover:text-white text-foreground text-xs font-medium transition-colors"
+                              >
+                                <span>Ler Capítulo</span>
+                                <ArrowRight className="h-3.5 w-3.5" />
+                              </Link>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             )}

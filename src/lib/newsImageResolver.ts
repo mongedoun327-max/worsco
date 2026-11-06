@@ -12,6 +12,16 @@ export const THEMATIC_IMAGE_POOLS: Record<string, string[]> = {
     "https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?w=1200&auto=format&fit=crop&q=80", // Disputa em campo
     "https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=1200&auto=format&fit=crop&q=80", // Arquibancada iluminada
     "https://images.unsplash.com/photo-1517927033932-b3d18e61fb3a?w=1200&auto=format&fit=crop&q=80", // Jogador chute
+    "https://images.unsplash.com/photo-1516478177764-9fe5bd7e9717?w=1200&auto=format&fit=crop&q=80", // Estádio europeu
+    "https://images.unsplash.com/photo-1551958219-acbc608c6377?w=1200&auto=format&fit=crop&q=80", // Chuteira e gramado
+  ],
+  Basquete: [
+    "https://images.unsplash.com/photo-1546519638-68e109498ffc?w=1200&auto=format&fit=crop&q=80", // Bola de basquete em piso de madeira
+    "https://images.unsplash.com/photo-1519766304817-4f37bda74a29?w=1200&auto=format&fit=crop&q=80", // Enterrada na cesta aro rede
+    "https://images.unsplash.com/photo-1505666287802-931dc83948e9?w=1200&auto=format&fit=crop&q=80", // Arena de basquete iluminada
+    "https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=1200&auto=format&fit=crop&q=80", // Quadra e ação de jogo
+    "https://images.unsplash.com/photo-1518063319789-7217e6706b04?w=1200&auto=format&fit=crop&q=80", // Cesta de basquete silhueta
+    "https://images.unsplash.com/photo-1574623452334-1e0ac2b3ccb4?w=1200&auto=format&fit=crop&q=80", // Ação de jogo em quadra
   ],
   Mercado: [
     "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=1200&auto=format&fit=crop&q=80", // Gráfico financeiro velas
@@ -153,8 +163,21 @@ export function getSmartNewsCover(
     return pool[stringHash(title) % pool.length];
   }
 
+  // Basketball & NBA priority matcher
   if (
-    /futebol|brasileir[aã]o|libertadores|champions|liga das na[cç][oõ]es|uefa|campeonato|copa\b|gol\b|est[aá]dio|palmeiras|flamengo|corinthians|s[aã]o paulo fc|cruzeiro|gr[eê]mio|botafogo|vasco|fluminense|real madrid|barcelona|atletico-mg|\b(sc internacional|colorado)\b|\b[A-Za-zÀ-ÿ0-9-]+\s+x\s+[A-Za-zÀ-ÿ0-9-]+/i.test(
+    lowerCat.includes("basquete") ||
+    /basquete|basquetebol|nba\b|lakers|warriors|celtics|nuggets|bucks|suns|clippers|sixers|knicks|heat\b|mavericks|timberwolves|thunder|grizzlies|pacers|cavaliers|lebron|curry|doncic|giannis|tatum|jokic|joki[cć]|wembanyama|durant|ant-man|edwards|shai|playoffs nba|triplo-duplo|arremesso| enterrada|cesta de 3|teto salarial nba|free agency nba/i.test(
+      lowerTitle
+    )
+  ) {
+    const pool = THEMATIC_IMAGE_POOLS.Basquete;
+    return pool[stringHash(title) % pool.length];
+  }
+
+  // Football (Focus on Top 5 World Leagues: Premier League, La Liga, Serie A, Bundesliga, Ligue 1 & UEFA Champions League)
+  if (
+    lowerCat.includes("futebol") ||
+    /futebol|premier league|la liga|serie a|bundesliga|ligue 1|champions league|uefa|real madrid|barcelona|manchester city|manchester united|liverpool|arsenal|chelsea|tottenham|bayern|borussia|psg|paris saint-germain|inter de mil[aã]o|juventus|milan|napoli|atletico de madrid|roma|bayer leverkusen|campeonato ingl[eê]s|campeonato espanhol|campeonato alem[aã]o|campeonato italiano|campeonato franc[eê]s|libertadores|brasileir[aã]o|copa do mundo|gol\b|bola de ouro|craque|est[aá]dio|\b[A-Za-zÀ-ÿ0-9-]+\s+x\s+[A-Za-zÀ-ÿ0-9-]+/i.test(
       lowerTitle
     )
   ) {

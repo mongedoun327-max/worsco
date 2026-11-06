@@ -81,7 +81,8 @@ export async function syncDailyNews(force = false): Promise<SyndicatedNewsItem[]
   }
 
   const topics = [
-    { topic: "futebol", limit: 30 },
+    { topic: "futebol", limit: 35 },
+    { topic: "basquete", limit: 35 },
     { topic: "mercado", limit: 30 },
     { topic: "politica", limit: 30 },
     { topic: "ciencia", limit: 30 },

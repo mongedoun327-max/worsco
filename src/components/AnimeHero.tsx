@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Play, Star, Plus, Check, Info } from "lucide-react";
+import { Play, Star, Plus, Check, Info, BookOpen } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import ProtectedImage from "./ProtectedImage";
@@ -85,12 +85,22 @@ export const AnimeHero = ({ item, onPlayTrailer }: AnimeHeroProps) => {
                 Assistir Trailer
               </button>
 
+              {item.manga?.chapters[0] && (
+                <Link
+                  to={`/animes/${item.id}/manga/${item.manga.chapters[0].id}`}
+                  className="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-5 py-3 rounded-full text-xs md:text-sm tracking-wider uppercase font-medium transition-transform active:scale-95 shadow-lg"
+                >
+                  <BookOpen className="w-4 h-4" />
+                  Ler Mangá
+                </Link>
+              )}
+
               <Link
                 to={`/animes/${item.id}`}
                 className="inline-flex items-center gap-2 bg-card/80 hover:bg-card text-foreground backdrop-blur-md border border-border px-5 py-3 rounded-full text-xs md:text-sm tracking-wider uppercase font-light transition-colors"
               >
                 <Info className="w-4 h-4" />
-                Ver Episódios ({item.episodesCount})
+                Episódios ({item.episodesCount})
               </Link>
 
               <button

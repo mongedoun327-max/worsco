@@ -216,41 +216,71 @@ O debate estimulado por **"${title}"** reforça que o livro, em qualquer formato
       "A proteção aos direitos autorais e o respeito às traduções cuidadosas mantêm-se como pilares da sustentabilidade cultural.",
       "O hábito da leitura atenta desponta como o antídoto mais eficaz contra a fragmentação cognitiva da era digital."
     ];
-  } else if (catLower.includes("futebol") || catLower.includes("esport")) {
-    historicalSection = `### Contexto Histórico e Cenário do Futebol Contemporâneo
+  } else if (catLower.includes("basquete") || catLower.includes("nba") || /lakers|warriors|celtics|nuggets|lebron|curry|doncic|nba\b/i.test(titleLower)) {
+    historicalSection = `### Contexto da NBA e Cenário do Basquetebol de Elite
+A National Basketball Association (NBA) vive uma das eras mais dinâmicas e competitivas de sua história de quase oito décadas. A revolução analítica do arremesso de três pontos, inaugurada na década passada pela dinastia do Golden State Warriors de Stephen Curry, transformou o basquete em um jogo de espaçamento total da quadra (*spacing*), velocidade vertiginosa de posses de bola (*pace*) e versatilidade posicional onde pivôs arremessam do perímetro e armadores comandam a tábua de rebotes.
 
-O futebol profissional vive sua mais dramática transformação estrutural desde a instituição da Lei Pelé e a consolidação do calendário unificado da FIFA. A transição acelerada de associações civis sem fins lucrativos para Sociedades Anônimas do Futebol (SAFs), a injeção maciça de fundos soberanos de investimento e a reconfiguração dos direitos de transmissão televisiva pulverizaram o ecossistema esportivo.
+Ao mesmo tempo, a liga atravessa um período de paridade sem precedentes: seis franquias diferentes conquistaram os últimos seis títulos, quebrando a era de supertimes previsíveis. A ascensão de superastros internacionais (Nikola Jokić, Luka Dončić, Giannis Antetokounmpo, Shai Gilgeous-Alexander e Victor Wembanyama) divide os holofotes com ícones geracionais como LeBron James e Kevin Durant.
 
-No Brasil e na América do Sul, a disputa de forças entre a Copa Libertadores, o Campeonato Brasileiro e o poderio econômico da UEFA Champions League gerou uma corrida armamentista por receitas comerciais, profissionalização das categorias de base e governança financeira.
+Nesse caldeirão de altíssima octanagem, **"${title}"** não é apenas uma nota de rodapé esportiva: reflete as tensões diárias de vestiário, disputas ferozes pela liderança das conferências Leste e Oeste e as repercussões de decisões controversas de quadra que alimentam debates apaixonados entre comentaristas e fãs ao redor do globo.`;
 
-A repercussão em torno de **"${title}"** não é um fato esportivo fortuito: trata-se de um ponto de inflexão na tabela, nos planos de gestão do clube e na relação passional entre a torcida e as decisões tomadas nos gabinetes executivos.`;
+    causeEffectSection = `### Resultados, Polêmicas de Arbitragem e Movimentações de Mercado
+• **Desempenho em Quadra e Box Score:** A eficiência nos arremessos de quadra, o aproveitamento nas bolas triplas e a intensidade na contenção defensiva do *pick-and-roll* ditam a oscilação do placar em finais de partida decididos na posse final.
+• **Polêmicas de Arbitragem e Relatórios L2M:** Decisões controversas de falta nos últimos segundos, marcações de faltas técnicas e expulsões acaloradas frequentemente colocam o comitê de arbitragem sob fogo cerrado, exigindo a revisão minuciosa do *Last Two Minute Report* (L2M) emitido pela liga no dia seguinte.
+• **Rumores de Trocas e o Nó do Teto Salarial:** O novo Acordo Coletivo de Trabalho (CBA) impôs penalidades financeiras e esportivas drásticas para franquias que ultrapassam o *second apron* do teto salarial, transformando o mercado de transferências (*trade deadline*) em um jogo de xadrez onde pedidos de troca e insatisfações públicas exigem manobras acrobáticas dos gerentes gerais (*general managers*).`;
 
-    causeEffectSection = `### Análise de Causa e Efeito: Tática, Finanças e Vestiário
+    perspectivesSection = `### Múltiplos Ângulos: Astros, Treinadores e Diretorias
+• **Jogadores e Superastros:** Cobram consistência dos critérios de arbitragem e proteção contra faltas violentas, ao mesmo tempo em que lidam com a pressão de entregarem atuações de nível All-NBA em calendários de 82 jogos na temporada regular.
+• **Comissões Técnicas:** Enfrentam o desafio diário de ajustar rotações nos minutos finais, desenhar jogadas desenhadas (*after-timeout plays - ATO*) e calibrar o descanso de atletas (*load management*) sem violar as regras de participação da liga.
+• **Front Office e Analistas Especializados:** Avaliam o valor de mercado de cada atleta, monitorando o impacto de cada vitória ou derrota na corrida pelas vagas diretas aos playoffs ou na perigosa repescagem do torneio de *Play-In*.`;
 
-• **Vetor Tático e Desempenho em Campo:** As decisões da comissão técnica e as variações de esquema tático geram impactos diretos na intensidade de pressão, ocupação dos espaços e consistência defensiva da equipe ao longo dos 90 minutos.
-• **Vetor Econômico e Orçamentário:** Premiações por fases atingidas, cotas de bilheteria e valorização dos direitos federativos de jovens atletas dependem diretamente da estabilidade dos resultados nas competições oficiais.
-• **Clima Interno e Fator Psicológico:** A resposta do elenco perante a pressão da torcida e da imprensa define a capacidade de superação nos momentos de oscilação do calendário.`;
+    technicalGlossarySection = `### Glossário da NBA e Conceitos Fundamentais
+• **Triple-Double (Triplo-Duplo):** Feito individual onde um jogador atinge dois dígitos (10 ou mais) em três fundamentos estatísticos positivos diferentes na mesma partida (geralmente pontos, rebotes e assistências).
+• **L2M (Last Two Minute Report):** Relatório oficial emitido pela NBA nas manhãs seguintes a jogos decididos por 3 pontos ou menos nos dois minutos finais, detalhando erros e acertos das decisões dos árbitros.
+• **Second Apron (Segundo Limite):** Teto salarial punitivo que impede equipes gastadoras de usarem exceções salariais de nível médio (MLE), trocarem escolhas de draft distantes e combinarem múltiplos salários em transferências.
+• **True Shooting Percentage (TS%):** Métrica avançada que avalia a eficiência real de pontuação de um jogador, considerando o valor proporcional de arremessos de dois pontos, bolas de três pontos e lances livres.`;
 
-    perspectivesSection = `### Múltiplos Ângulos: Comissões Técnicas, Gestão e Arquibancada
-
-• **Comissão Técnica e Atletas:** Apontam o desgaste do calendário de jogos a cada 72 horas como o principal adversário na manutenção dos índices físicos ideais e na prevenção de lesões musculares.
-• **Diretoria Executiva e Investidores:** Buscam blindar o planejamento a médio prazo, defendendo responsabilidade orçamentária contra a fúria imediatista de eliminações pontuais.
-• **Torcedores e Sócios-Torcedores:** Reivindicam dedicação em campo, transparência nas contratações e respeito à identidade histórica da instituição.`;
-
-    technicalGlossarySection = `### Glossário Tático e Termos Especializados
-
-• **Fair Play Financeiro:** Conjunto de regras que visa impedir que clubes gastem mais do que arrecadam, coibindo o endividamento descontrolado e a concorrência desleal.
-• **Expected Goals (xG):** Métrica estatística avançada que calcula a probabilidade matemática de uma finalização resultar em gol com base na distância, ângulo e pressão adversária.
-• **Gegenpressing (Pressão Pós-Perda):** Movimento tático imediato de reocupação e combate defensivo no exato segundo em que a equipe perde a posse de bola no terço ofensivo.`;
-
-    futureOutlookSection = `### Perspectivas e Próximos Confrontos
-
-A sequência de partidas decisivas determinará o fôlego da equipe nas rodadas finais. A capacidade de manter a coesão interna diante dos holofotes e executar o plano de jogo com precisão ditará os rumos do clube na temporada.`;
+    futureOutlookSection = `### Projeções na Tabela e Corrida ao Título
+O desdobramento relatado em **"${title}"** ecoará nas próximas rodadas da temporada regular. A capacidade da equipe de blindar seu ambiente interno contra ruídos midiáticos, manter seus principais atletas saudáveis e executar esquemas sob pressão ditará quem chegará com fôlego de campeão aos playoffs da NBA.`;
 
     takeaways = [
-      "A profissionalização das SAFs e novas cotas de transmissão transformaram o futebol em indústria multibilionária.",
-      "A gestão de carga física e a profundidade de elenco são determinantes para a competitividade em calendários densos.",
-      "A harmonia entre conselho gestor, comissão técnica e arquibancada é o fator crítico para a sustentabilidade de resultados."
+      "A paridade e o ritmo frenético da NBA transformam cada posse de bola final em um espetáculo imprevisível.",
+      "As controvérsias de arbitragem e o relatório L2M mantêm-se no centro dos debates mais fervorosos da modalidade.",
+      "As novas travas do teto salarial (second apron) revolucionaram a forma como as franquias negociam transferências e gerenciam seus elencos estelares.",
+      "O equilíbrio entre desempenho ofensivo no perímetro e contenção física no garrafão define os reais candidatos ao Troféu Larry O'Brien."
+    ];
+  } else if (catLower.includes("futebol") || catLower.includes("esport")) {
+    historicalSection = `### Contexto Histórico e o Panorama das 5 Principais Ligas Mundiais
+O futebol de mais alto rendimento no planeta concentra-se e gravita em torno das **Cinco Principais Ligas Mundiais** — a **Premier League** inglesa (líder absoluta de faturamento global e intensidade atlética), **La Liga** espanhola (berço dos maiores duelos técnicos entre Real Madrid, Barcelona e Atlético de Madrid), a **Serie A** italiana (renomada por sua erudição tática e renascimento competitivo), a **Bundesliga** alemã (sinônimo de estádios lotados, velocidade vertical e hegemonia do Bayern de Munique contra o Borussia Dortmund e o Bayer Leverkusen) e a **Ligue 1** francesa (celeiro de talentos planetários e potência do Paris Saint-Germain) —, tendo como ápice supremo os confrontos intercontinentais da **UEFA Champions League**.
+
+Nas últimas temporadas, esse ecossistema bilionário foi reconfigurado por fundos soberanos de investimento, fundos de *private equity*, regras cada vez mais rigorosas de Sustentabilidade Financeira da UEFA (antigo Fair Play Financeiro) e a revolução dos esquemas táticos de pressão agressiva e saída construída desde o goleiro.
+
+Neste tabuleiro de alcance planetário, o desfecho de **"${title}"** ultrapassa fronteiras domésticas: trata-se de um ponto de inflexão nos índices de coeficiente europeu, no mercado de transferências internacionais e na disputa pelo prestígio dos maiores troféus do futebol mundial.`;
+
+    causeEffectSection = `### Análise de Causa e Efeito: Prancheta Tática, Gestão e Vestiário
+• **Vetor Tático e Confronto de Estilos:** A disputa entre modelos de jogo — posse territorial sufocante versus transições em contra-ataques verticais — define a quebra de linhas defensivas e a ocupação das entrelinhas adversárias durante os 90 minutos de alta intensidade.
+• **Vetor Econômico e Sustentabilidade Europeia:** Cada vaga conquistada para a Champions League ou classificação em copas nacionais assegura dezenas de milhões de euros em direitos televisivos, bilheteria e premiações que balizam as janelas de contratações subsequentes.
+• **Ambiente de Vestiário e Gestão de Egos:** Em elencos recheados de estrelas internacionais e jogadores de seleção, a habilidade do treinador de dosar minutagens, gerenciar insatisfações no banco e manter a fome coletiva de títulos é o diferencial definitivo entre o sucesso duradouro ou crises institucionais.`;
+
+    perspectivesSection = `### Múltiplos Olhares: Treinadores de Elite, Diretorias e a Imprensa Global
+• **Treinadores e Analistas de Desempenho:** Ressaltam que o volume frenético de partidas internacionais reduz as sessões reais de treinamento no gramado a meras sessões de recuperação física e vídeos táticos.
+• **Diretoria Executiva e Diretores de Futebol:** Trabalham sob escrutínio de auditorias financeiras internacionais para evitar sanções de perda de pontos por violação dos limites de gastos com folha salarial.
+• **Torcedores e Mídia Esportiva Internacional:** Analisam cada lance sob a ótica da mística dos clubes e da corrida individual pelos prêmios de Melhor Jogador do Mundo e Bola de Ouro.`;
+
+    technicalGlossarySection = `### Conceitos Táticos e Jurídicos do Futebol Mundial
+• **Gegenpressing (Contrapressão Imediata):** Estratégia tática que exige que os atletas avancem em bloco compacto para desarmar o adversário no exato instante da perda da bola, antes que a equipe oponente estruture um contra-ataque.
+• **Regras de Sustentabilidade Financeira da UEFA:** Diretrizes que limitam os gastos com salários de atletas, comissões de empresários e custos de transferências a uma porcentagem máxima da receita do clube (limite de 70%).
+• **Bloco Baixo vs. Linha Alta:** Estratégias espaciais onde uma equipe fecha os arredores de sua grande área reduzindo espaços (*bloco baixo*) ou adianta sua linha de zaga até o círculo central para encurralar o rival (*linha alta*).
+• **Expected Goals (xG):** Indicador estatístico probabilístico que avalia a qualidade real de uma chance criada com base na localização do chute, posicionamento dos zagueiros e ângulo da finalização.`;
+
+    futureOutlookSection = `### Perspectivas nas Tabelas e Grandes Duelos Internacionais
+As rodadas decisivas que se avizinham determinarão os campeões das cinco grandes ligas e os chaveamentos mata-mata da Europa. A consistência defensiva e o sangue-frio nas decisões sob os holofotes do futebol global definirão quem erguerá as taças mais cobiçadas do planeta.`;
+
+    takeaways = [
+      "As cinco grandes ligas europeias (Premier League, La Liga, Serie A, Bundesliga e Ligue 1) concentram os mais altos padrões técnicos e financeiros do futebol moderno.",
+      "As exigências do Fair Play Financeiro e os calendários internacionais comprimidos impõem disciplina cirúrgica de elenco.",
+      "A batalha tática entre controle de posse e transições ultravelozes continua ditando os vencedores dos maiores torneios continentais.",
+      "A harmonia interna entre comissão técnica e vestiário estelar é o fator decisivo para triunfar na reta final das temporadas europeias."
     ];
   } else if (catLower.includes("mercado") || catLower.includes("econom") || catLower.includes("finan")) {
     historicalSection = `### Contexto Macroeconômico e Antecedentes de Mercado
