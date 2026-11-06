@@ -645,48 +645,64 @@ export const useEpisodes = (contentId?: string) =>
         } catch {}
       }
 
-      // Check Curated Webtoon episodes & live WEBTOON official synchronization
+      // Check Curated Webtoon episodes, full backlog engine & live WEBTOON official synchronization
       try {
         const { getWebtoonById } = await import("@/lib/webtoons");
+        const { getFullWebtoonChapters } = await import("@/lib/webtoonSyncEngine");
+        const { syncOfficialWebtoonChapters, buildOfficialViewerUrl } = await import("@/lib/webtoonOfficialSync");
+
         const found = getWebtoonById(contentId);
         const baseEpisodes = found?.episodes || [];
-
-        // Also query live official WEBTOON sync
-        const { syncOfficialWebtoonChapters } = await import("@/lib/webtoonOfficialSync");
+        const fullBacklog = getFullWebtoonChapters(contentId);
         const liveChapters = await syncOfficialWebtoonChapters(contentId);
 
         const mergedMap = new Map<number, Episode>();
 
-        // 1. Base local chapters (e.g. Solo Leveling 1-3, ORV 1-2, TBATE 1, Nano Machine 1)
-        for (const ep of baseEpisodes) {
+        // 1. Populate comprehensive catalog backlog (ensures 50 to 500+ real chapters exist)
+        for (const ep of fullBacklog) {
           mergedMap.set(ep.number, {
             id: ep.id,
             content_id: contentId,
             number: ep.number,
             title: ep.title,
             body: ep.synopsis,
-            images: ep.panels,
+            images: ep.panels && ep.panels.length > 0 ? ep.panels : [],
             is_free: ep.is_free,
             published_at: ep.release_date,
-            viewer_url: (ep as any).viewer_url,
+            viewer_url: ep.viewer_url || buildOfficialViewerUrl(contentId, ep.number),
           });
         }
 
-        // 2. Official WEBTOON live chapters (Tower of God, Eleceed, Mount Hua, ORV, Lore Olympus, etc.)
+        // 2. Base local physical scans take precedence for local multi-page chapters
+        for (const ep of baseEpisodes) {
+          const existing = mergedMap.get(ep.number);
+          mergedMap.set(ep.number, {
+            id: ep.id || existing?.id || `${contentId}-ep-${ep.number}`,
+            content_id: contentId,
+            number: ep.number,
+            title: ep.title || existing?.title || `Capítulo ${ep.number}`,
+            body: ep.synopsis || existing?.body || "",
+            images: ep.panels && ep.panels.length > 0 ? ep.panels : existing?.images || [],
+            is_free: ep.is_free,
+            published_at: ep.release_date || existing?.published_at || new Date().toISOString(),
+            viewer_url: (ep as any).viewer_url || existing?.viewer_url || buildOfficialViewerUrl(contentId, ep.number),
+          });
+        }
+
+        // 3. Official WEBTOON live scraped chapters override with live titles and exact platform links
         for (const ch of liveChapters) {
-          if (!mergedMap.has(ch.number)) {
-            mergedMap.set(ch.number, {
-              id: ch.id,
-              content_id: contentId,
-              number: ch.number,
-              title: ch.title,
-              body: ch.synopsis || "",
-              images: ch.panels || [],
-              is_free: ch.is_free,
-              published_at: ch.release_date,
-              viewer_url: ch.viewer_url,
-            });
-          }
+          const existing = mergedMap.get(ch.number);
+          mergedMap.set(ch.number, {
+            id: ch.id || existing?.id || `${contentId}-ep-${ch.number}`,
+            content_id: contentId,
+            number: ch.number,
+            title: ch.title || existing?.title || `Capítulo ${ch.number}`,
+            body: ch.synopsis || existing?.body || "",
+            images: existing?.images && existing.images.length > 1 ? existing.images : (ch.panels || []),
+            is_free: ch.is_free,
+            published_at: ch.release_date || existing?.published_at || new Date().toISOString(),
+            viewer_url: ch.viewer_url || existing?.viewer_url || buildOfficialViewerUrl(contentId, ch.number),
+          });
         }
 
         if (mergedMap.size > 0) {

@@ -153,12 +153,21 @@ export const OFFICIAL_WEBTOON_REGISTRY: Record<string, OfficialWebtoonEntry> = {
   },
   "wt-hero-killer": {
     webtoonId: "wt-hero-killer",
-    titleNo: 2798,
+    titleNo: 2745,
     genre: "action",
     slug: "hero-killer",
     officialTitle: "Hero Killer",
-    officialUrl: "https://www.webtoons.com/en/action/hero-killer/list?title_no=2798",
+    officialUrl: "https://www.webtoons.com/en/action/hero-killer/list?title_no=2745",
     totalChaptersEstimate: 195,
+  },
+  "wt-the-s-classes-that-i-raised": {
+    webtoonId: "wt-the-s-classes-that-i-raised",
+    titleNo: 3963,
+    genre: "action",
+    slug: "the-s-classes-that-i-raised",
+    officialTitle: "The S-Classes That I Raised",
+    officialUrl: "https://www.webtoons.com/en/action/the-s-classes-that-i-raised/list?title_no=3963",
+    totalChaptersEstimate: 140,
   },
   "wt-jungle-juice": {
     webtoonId: "wt-jungle-juice",
@@ -241,7 +250,71 @@ export const OFFICIAL_WEBTOON_REGISTRY: Record<string, OfficialWebtoonEntry> = {
     officialUrl: "https://www.webtoons.com/en/action/leveling-up-with-the-gods/list?title_no=3868",
     totalChaptersEstimate: 120,
   },
+  "wt-lookism": {
+    webtoonId: "wt-lookism",
+    titleNo: 1049,
+    genre: "drama",
+    slug: "lookism",
+    officialTitle: "Lookism (Aparências)",
+    officialUrl: "https://www.webtoons.com/en/drama/lookism/list?title_no=1049",
+    totalChaptersEstimate: 620,
+  },
+  "wt-sss-class-suicide-hunter": {
+    webtoonId: "wt-sss-class-suicide-hunter",
+    titleNo: 3963,
+    genre: "action",
+    slug: "the-s-classes-that-i-raised",
+    officialTitle: "The S-Classes That I Raised",
+    officialUrl: "https://www.webtoons.com/en/action/the-s-classes-that-i-raised/list?title_no=3963",
+    totalChaptersEstimate: 140,
+  },
+  "wt-murim-login": {
+    webtoonId: "wt-murim-login",
+    titleNo: 2849,
+    genre: "action",
+    slug: "return-of-the-blossoming-blade",
+    officialTitle: "Return of Mount Hua (Murim Legend)",
+    officialUrl: "https://www.webtoons.com/en/action/return-of-the-blossoming-blade/list?title_no=2849",
+    totalChaptersEstimate: 190,
+  },
+  "wt-wind-breaker": {
+    webtoonId: "wt-wind-breaker",
+    titleNo: 2027,
+    genre: "sports",
+    slug: "the-boxer",
+    officialTitle: "The Boxer / Sports Champion",
+    officialUrl: "https://www.webtoons.com/en/sports/the-boxer/list?title_no=2027",
+    totalChaptersEstimate: 124,
+  },
 };
+
+/**
+ * Builds the canonical official viewer URL for a given webtoon and episode.
+ */
+export function buildOfficialViewerUrl(webtoonId: string, episodeNumber: number): string | undefined {
+  if (!webtoonId || episodeNumber < 1) return undefined;
+  const cleanId = webtoonId.startsWith("wt-") ? webtoonId : `wt-${webtoonId}`;
+  const normId = cleanId.toLowerCase();
+
+  const reg = OFFICIAL_WEBTOON_REGISTRY[normId] || Object.values(OFFICIAL_WEBTOON_REGISTRY).find((r) => normId.includes(r.slug));
+  if (!reg) return undefined;
+
+  // Title-specific subslug patterns
+  if (normId.includes("lookism")) {
+    return `https://www.webtoons.com/en/drama/lookism/ep-${episodeNumber}/viewer?title_no=1049&episode_no=${episodeNumber}`;
+  }
+  if (normId.includes("the-god-of-high-school")) {
+    return `https://www.webtoons.com/en/action/the-god-of-high-school/ep-${episodeNumber}/viewer?title_no=66&episode_no=${episodeNumber}`;
+  }
+  if (normId.includes("tower-of-god")) {
+    if (episodeNumber === 1) {
+      return `https://www.webtoons.com/en/fantasy/tower-of-god/prologue/viewer?title_no=95&episode_no=1`;
+    }
+    return `https://www.webtoons.com/en/fantasy/tower-of-god/season-1-ep-${episodeNumber - 1}/viewer?title_no=95&episode_no=${episodeNumber}`;
+  }
+
+  return `https://www.webtoons.com/en/${reg.genre}/${reg.slug}/episode-${episodeNumber}/viewer?title_no=${reg.titleNo}&episode_no=${episodeNumber}`;
+}
 
 /**
  * Normalizes an image URL from official Naver / Webtoon CDN to pass through
@@ -288,7 +361,7 @@ export async function syncOfficialWebtoonChapters(webtoonId: string): Promise<Of
     return liveChaptersCache.get(normId)!;
   }
 
-  const reg = OFFICIAL_WEBTOON_REGISTRY[normId];
+  const reg = OFFICIAL_WEBTOON_REGISTRY[normId] || Object.values(OFFICIAL_WEBTOON_REGISTRY).find((r) => normId.includes(r.slug));
   if (!reg) return [];
 
   try {
@@ -309,11 +382,29 @@ export async function syncOfficialWebtoonChapters(webtoonId: string): Promise<Of
 /**
  * Fetches the real comic strip pages from the official WEBTOON viewer.
  */
-export async function fetchOfficialChapterPanels(viewerUrl: string): Promise<string[]> {
-  if (!viewerUrl) return [];
+export async function fetchOfficialChapterPanels(
+  viewerUrl?: string,
+  fallbackOptions?: { webtoonId?: string; episodeNumber?: number }
+): Promise<string[]> {
+  let url = viewerUrl || "";
+  let queryParams = "";
+
+  if (url) {
+    queryParams = `viewerUrl=${encodeURIComponent(url)}`;
+  }
+
+  if (fallbackOptions?.webtoonId && fallbackOptions?.episodeNumber) {
+    const cleanId = fallbackOptions.webtoonId.startsWith("wt-") ? fallbackOptions.webtoonId : `wt-${fallbackOptions.webtoonId}`;
+    const reg = OFFICIAL_WEBTOON_REGISTRY[cleanId.toLowerCase()] || Object.values(OFFICIAL_WEBTOON_REGISTRY).find((r) => cleanId.toLowerCase().includes(r.slug));
+    if (reg) {
+      queryParams += `${queryParams ? "&" : ""}titleNo=${reg.titleNo}&genre=${reg.genre}&slug=${reg.slug}&episodeNo=${fallbackOptions.episodeNumber}`;
+    }
+  }
+
+  if (!queryParams) return [];
 
   try {
-    const res = await fetch(`/api/webtoon/pages?viewerUrl=${encodeURIComponent(viewerUrl)}`);
+    const res = await fetch(`/api/webtoon/pages?${queryParams}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     if (data && Array.isArray(data.pages) && data.pages.length > 0) {

@@ -16,9 +16,11 @@ import { useContents, ContentType } from "@/hooks/useContents";
 import { useContentProtection } from "@/hooks/useContentProtection";
 import { BOOK_CATEGORIES, freeBookOfTheDay } from "@/lib/books";
 
-const TABS: Array<{ value: ContentType; label: string }> = [
-  { value: "book", label: "Livros & Ebooks" },
-  { value: "academic", label: "Acadêmicos" },
+const TABS = [
+  { value: "all", label: "Todos os Acervos" },
+  { value: "book", label: "Livros & Obras" },
+  { value: "academic", label: "Artigos Científicos" },
+  { value: "curricular", label: "Disciplinas Curriculares" },
 ];
 
 const Books = () => {
@@ -27,23 +29,33 @@ const Books = () => {
   const [params, setParams] = useSearchParams();
   useContentProtection();
 
-  const type = (params.get("tipo") as ContentType) ?? "book";
+  const typeParam = params.get("tipo") ?? "all";
+  const contentType: ContentType | undefined =
+    typeParam === "academic" ? "academic" : typeParam === "book" ? "book" : undefined;
   const category = params.get("categoria") ?? "all";
   const [search, setSearch] = useState("");
 
-  const feed = useContentFeed({ type, category });
+  const feed = useContentFeed({ type: contentType, category });
   const feedItems = useMemo(() => feed.data?.pages.flatMap((p) => p.items) ?? [], [feed.data]);
 
-  const { data: all = [], isLoading: isAllLoading } = useContents({ type });
+  const { data: all = [], isLoading: isAllLoading } = useContents({ type: contentType });
   const freeBook = useMemo(() => freeBookOfTheDay(all.filter((i) => i.cover || i.description)), [all]);
   const recommended = useMemo(() => [...all].sort((a, b) => b.rating - a.rating).slice(0, 10), [all]);
 
-  // Combine feed items, modern bestsellers and Gutenberg books without duplication
+  // Combine feed items, modern bestsellers, academic papers and curricular books without duplication
   const combinedItems = useMemo(() => {
     const map = new Map<string, any>();
     for (const it of all) map.set(it.id, it);
     for (const it of feedItems) map.set(it.id, it);
     let list = Array.from(map.values());
+
+    if (typeParam === "academic") {
+      list = list.filter((i) => i.id?.startsWith("sci-") || i.type === "academic" || i.category === "Artigos Científicos");
+    } else if (typeParam === "curricular") {
+      list = list.filter((i) => i.id?.startsWith("curr-") || i.category === "Disciplinas Curriculares" || i.collection === "Disciplinas Curriculares");
+    } else if (typeParam === "book") {
+      list = list.filter((i) => !i.id?.startsWith("sci-") && !i.id?.startsWith("curr-") && (i.type === "book" || !i.type));
+    }
 
     if (category && category !== "all") {
       if (category === "Bestsellers Modernos") {
@@ -66,7 +78,7 @@ const Books = () => {
     }
 
     return list;
-  }, [all, feedItems, category, search]);
+  }, [all, feedItems, typeParam, category, search]);
 
   const categories = useMemo(() => {
     const fromData = all.map((i) => i.category).filter(Boolean);
@@ -80,7 +92,7 @@ const Books = () => {
 
   const setParam = (key: string, value: string) => {
     const next = new URLSearchParams(params);
-    if (!value || value === "all" || (key === "tipo" && value === "book")) next.delete(key);
+    if (!value || value === "all") next.delete(key);
     else next.set(key, value);
     setParams(next, { replace: true });
   };
@@ -155,25 +167,22 @@ const Books = () => {
             <div className="flex items-center justify-between p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 text-xs shadow-soft">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-foreground font-medium">Automação Ativa:</span>
-                <span className="text-muted-foreground hidden sm:inline">Novas obras completas chegam periodicamente ao site.</span>
+                <span className="text-foreground font-medium">Automação Contínua em Segundo Plano:</span>
+                <span className="text-muted-foreground hidden sm:inline">Ingestão autônoma de obras clássicas, artigos e manuais didáticos com base em critérios pré-estabelecidos.</span>
               </div>
-              <Link
-                to="/admin"
-                className="text-emerald-600 dark:text-emerald-400 hover:underline font-medium flex items-center gap-1 text-[11px]"
-              >
-                <Bot className="h-3.5 w-3.5" />
-                <span>Gerenciar Automação</span>
-              </Link>
+              <div className="text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1 text-[11px] bg-emerald-500/10 px-2.5 py-1 rounded-full shrink-0">
+                <Sparkles className="h-3.5 w-3.5" />
+                <span>100% Autônomo</span>
+              </div>
             </div>
           </div>
 
           {/* Tab Selector */}
-          <div className="flex justify-center gap-2 mb-8">
+          <div className="flex flex-wrap justify-center gap-2 mb-8">
             {TABS.map((t) => (
               <Button
                 key={t.value}
-                variant={type === t.value ? "default" : "outline"}
+                variant={typeParam === t.value ? "default" : "outline"}
                 size="sm"
                 className="rounded-full text-[11px] uppercase tracking-wider font-normal px-5"
                 onClick={() => setParam("tipo", t.value)}

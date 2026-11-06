@@ -61,30 +61,46 @@ export const WebtoonReader = () => {
   // Live official panels state
   const [livePanels, setLivePanels] = useState<string[]>([]);
   const [isFetchingPanels, setIsFetchingPanels] = useState(false);
+  const [fetchFailed, setFetchFailed] = useState(false);
 
-  useEffect(() => {
-    setLivePanels([]);
+  const loadPanels = () => {
     if (!activeEpisode) return;
 
     if (activeEpisode.images && activeEpisode.images.length > 1) {
       setLivePanels(activeEpisode.images);
+      setFetchFailed(false);
       return;
     }
 
     const viewerUrl = (activeEpisode as any).viewer_url;
-    if (viewerUrl) {
-      setIsFetchingPanels(true);
-      fetchOfficialChapterPanels(viewerUrl)
-        .then((pages) => {
-          if (pages && pages.length > 0) {
-            setLivePanels(pages);
-          }
-        })
-        .finally(() => {
-          setIsFetchingPanels(false);
-        });
-    }
-  }, [activeEpisode?.id, (activeEpisode as any)?.viewer_url]);
+    setIsFetchingPanels(true);
+    setFetchFailed(false);
+
+    fetchOfficialChapterPanels(viewerUrl, {
+      webtoonId: id || (activeEpisode as any).content_id,
+      episodeNumber: activeEpisode.number,
+    })
+      .then((pages) => {
+        if (pages && pages.length > 0) {
+          setLivePanels(pages);
+          setFetchFailed(false);
+        } else {
+          setFetchFailed(true);
+        }
+      })
+      .catch(() => {
+        setFetchFailed(true);
+      })
+      .finally(() => {
+        setIsFetchingPanels(false);
+      });
+  };
+
+  useEffect(() => {
+    setLivePanels([]);
+    loadPanels();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeEpisode?.id, (activeEpisode as any)?.viewer_url, activeEpisode?.number, id]);
 
   const currentPanels = useMemo(() => {
     if (livePanels.length > 0) return livePanels;
@@ -242,10 +258,10 @@ export const WebtoonReader = () => {
                   <span>{webtoon.title}</span>
                   <span className="text-zinc-600">·</span>
                   <span className="text-zinc-400">Capítulo {activeEpisode.number}</span>
-                  {activeEpisode.images?.length > 0 && (
+                  {currentPanels.length > 1 && (
                     <>
                       <span className="text-zinc-600">·</span>
-                      <span className="text-emerald-500 font-mono text-[11px]">{activeEpisode.images.length} págs</span>
+                      <span className="text-emerald-500 font-mono text-[11px]">{currentPanels.length} págs</span>
                     </>
                   )}
                 </p>
@@ -389,14 +405,28 @@ export const WebtoonReader = () => {
           </p>
         </div>
 
+        {/* Live Panels Fetching Banner / Skeleton */}
+        {isFetchingPanels && (
+          <div className={`w-full ${widthClasses[containerWidth]} px-4 py-6 text-center space-y-4`}>
+            <div className="flex items-center justify-center gap-3 p-4 rounded-2xl bg-emerald-950/40 border border-emerald-800/40 text-emerald-300 text-xs">
+              <div className="w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin shrink-0" />
+              <span>Sincronizando páginas oficiais de alta resolução da plataforma Webtoon...</span>
+            </div>
+            <div className="space-y-2 animate-pulse opacity-40">
+              <div className="w-full h-80 bg-zinc-800 rounded-lg" />
+              <div className="w-full h-80 bg-zinc-800 rounded-lg" />
+            </div>
+          </div>
+        )}
+
         {/* Continuous Illustrated Manhwa Strip OR Official Chapter Showcase Card */}
-        {activeEpisode.images && activeEpisode.images.length > 1 ? (
+        {currentPanels && currentPanels.length > 1 ? (
           <div className={`w-full ${widthClasses[containerWidth]} flex flex-col items-center gap-0 shadow-2xl bg-black overflow-hidden`}>
-            {activeEpisode.images.map((panelUrl, index) => (
+            {currentPanels.map((panelUrl, index) => (
               <div key={index} className="w-full relative group bg-black">
                 <img
                   src={panelUrl}
-                  alt={`Página ${index + 1} de ${activeEpisode.images.length} — ${activeEpisode.title}`}
+                  alt={`Página ${index + 1} de ${currentPanels.length} — ${activeEpisode.title}`}
                   loading={index < 4 ? "eager" : "lazy"}
                   decoding="async"
                   onError={(e) => {
@@ -406,12 +436,12 @@ export const WebtoonReader = () => {
                   className="w-full h-auto block select-none pointer-events-auto"
                 />
                 <span className="absolute bottom-2 right-2 text-[10px] font-mono bg-black/70 text-zinc-400 px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                  {index + 1} / {activeEpisode.images.length}
+                  {index + 1} / {currentPanels.length}
                 </span>
               </div>
             ))}
           </div>
-        ) : (
+        ) : !isFetchingPanels ? (
           /* Official Chapter Overview & Showcase Card for cataloged entries */
           <div className={`w-full ${widthClasses[containerWidth]} px-4 py-8`}>
             <div className="relative rounded-3xl overflow-hidden border border-zinc-800 bg-gradient-to-b from-zinc-900/90 to-[#12131a] p-6 sm:p-10 shadow-2xl">
@@ -465,31 +495,39 @@ export const WebtoonReader = () => {
                     {activeEpisode.body || webtoon.description}
                   </div>
 
-                  <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
-                    {nextEpisode ? (
-                      <Button
-                        asChild
-                        className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-medium"
+                  <div className="pt-2 flex flex-wrap items-center justify-center md:justify-start gap-3">
+                    <Button
+                      onClick={loadPanels}
+                      variant="outline"
+                      className="border-emerald-700/60 bg-emerald-950/30 hover:bg-emerald-900/50 text-emerald-300 text-xs h-9"
+                    >
+                      <Sparkles className="h-3.5 w-3.5 mr-1.5 text-emerald-400" />
+                      <span>Recarregar Páginas Oficiais</span>
+                    </Button>
+
+                    {(activeEpisode as any).viewer_url && (
+                      <a
+                        href={(activeEpisode as any).viewer_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs transition-colors border border-zinc-700"
                       >
-                        <Link to={`/webtoon/${webtoon.id}/ler/${nextEpisode.id}`}>
-                          <span>Avançar para Episódio {nextEpisode.number}</span>
-                          <ArrowRight className="h-4 w-4 ml-1.5" />
-                        </Link>
-                      </Button>
-                    ) : (
-                      <div className="text-xs text-zinc-400 flex items-center gap-1.5">
-                        <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                        <span>Você está no capítulo mais recente desta obra!</span>
-                      </div>
+                        <ExternalLink className="h-3.5 w-3.5 text-zinc-400" />
+                        <span>Ver no Webtoons Oficial</span>
+                      </a>
                     )}
 
-                    <Button
-                      asChild
-                      variant="outline"
-                      className="w-full sm:w-auto border-zinc-700 bg-zinc-800/60 hover:bg-zinc-800 text-zinc-200"
-                    >
-                      <Link to={`/webtoon/${webtoon.id}`}>Ver Ficha Completa da Obra</Link>
-                    </Button>
+                    {nextEpisode && (
+                      <Button
+                        asChild
+                        className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs h-9"
+                      >
+                        <Link to={`/webtoon/${webtoon.id}/ler/${nextEpisode.id}`}>
+                          <span>Próximo Episódio ({nextEpisode.number})</span>
+                          <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
+                        </Link>
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -497,12 +535,12 @@ export const WebtoonReader = () => {
               {/* Informative footnote for readers */}
               <div className="mt-8 pt-6 border-t border-zinc-800/80 text-center">
                 <p className="text-xs text-zinc-400 font-light max-w-2xl mx-auto">
-                  Este webtoon possui sua capa e metadados oficiais devidamente catalogados no sistema. Para desfrutar de capítulos com rolagens verticais completas de dezenas de páginas em alta resolução, confira também obras como <strong className="text-zinc-200">Solo Leveling</strong> (Eps 1-3), <strong className="text-zinc-200">Omniscient Reader</strong> (Eps 1-2), <strong className="text-zinc-200">The Beginning After the End</strong> (Ep 1) e <strong className="text-zinc-200">Nano Machine</strong> (Ep 1).
+                  Capítulos sincronizados com a plataforma oficial. Obras com rolagens verticais completas de dezenas a centenas de páginas incluem <strong className="text-zinc-200">The Greatest Estate Developer</strong>, <strong className="text-zinc-200">Lookism</strong>, <strong className="text-zinc-200">Eleceed</strong>, <strong className="text-zinc-200">Return of Mount Hua</strong>, <strong className="text-zinc-200">Doom Breaker</strong>, <strong className="text-zinc-200">Sweet Home</strong>, <strong className="text-zinc-200">Teenage Mercenary</strong>, <strong className="text-zinc-200">Tower of God</strong>, <strong className="text-zinc-200">Solo Leveling</strong> e <strong className="text-zinc-200">Omniscient Reader</strong>.
                 </p>
               </div>
             </div>
           </div>
-        )}
+        ) : null}
 
         {/* Bottom Episode Actions & Community Interaction Section */}
         <div className={`w-full ${widthClasses[containerWidth]} px-6 py-12 mt-12 space-y-10 border-t border-zinc-900`}>

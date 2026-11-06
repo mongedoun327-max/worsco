@@ -1457,6 +1457,7 @@ function officialWebtoonIntegrationPlugin(): Plugin {
           const genre = urlObj.searchParams.get('genre') || 'action';
           const slug = urlObj.searchParams.get('slug') || '';
           const webtoonId = urlObj.searchParams.get('webtoonId') || `wt-${slug}`;
+          const requestedPage = urlObj.searchParams.get('page');
 
           if (!titleNo) {
             res.statusCode = 400;
@@ -1464,97 +1465,116 @@ function officialWebtoonIntegrationPlugin(): Plugin {
             return;
           }
 
-          const cacheKey = `${genre}_${slug}_${titleNo}`;
+          const cacheKey = `${genre}_${slug}_${titleNo}_${requestedPage || 'all'}`;
           const cached = chaptersCache.get(cacheKey);
-          if (cached && Date.now() - cached.timestamp < 10 * 60 * 1000) {
+          if (cached && Date.now() - cached.timestamp < 15 * 60 * 1000) {
             res.statusCode = 200;
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify(cached.data));
             return;
           }
 
-          const listUrl = `https://www.webtoons.com/en/${genre}/${slug}/list?title_no=${titleNo}&page=1`;
-          const upstream = await fetch(listUrl, {
-            headers: {
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-              'Referer': 'https://www.webtoons.com/',
-            },
+          // Pages to fetch: if specific page requested, fetch that; otherwise fetch pages 1 to 5 to get a wide catalog
+          const pagesToFetch = requestedPage ? [parseInt(requestedPage, 10)] : [1, 2, 3, 4, 5];
+          const chaptersMap = new Map<number, any>();
+
+          const listFetches = pagesToFetch.map(async (p) => {
+            try {
+              const listUrl = `https://www.webtoons.com/en/${genre}/${slug}/list?title_no=${titleNo}&page=${p}`;
+              const upstream = await fetch(listUrl, {
+                headers: {
+                  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                  'Referer': 'https://www.webtoons.com/',
+                },
+              });
+
+              if (!upstream.ok) return;
+              const html = await upstream.text();
+              const episodeMatches = [...html.matchAll(/<li[^>]*id="episode_(\d+)"[^>]*>([\s\S]*?)<\/li>/gi)];
+
+              for (const m of episodeMatches) {
+                const raw = m[2];
+                const num = parseInt(m[1], 10);
+                let link = raw.match(/href="([^"]+)"/)?.[1] || '';
+                if (link && !link.startsWith('http')) {
+                  link = `https://www.webtoons.com${link}`;
+                }
+                const subj = raw.match(/<span class="subj"[^>]*>([\s\S]*?)<\/span>/)?.[1]?.replace(/<[^>]+>/g, '').trim() || `Episódio ${num}`;
+                const dateStr = raw.match(/<span class="date"[^>]*>([\s\S]*?)<\/span>/)?.[1]?.trim() || '';
+                const thmb = raw.match(/<img[^>]*src="([^"]+)"/)?.[1] || '';
+
+                if (!chaptersMap.has(num)) {
+                  chaptersMap.set(num, {
+                    id: `${webtoonId}-ep-${num}`,
+                    webtoon_id: webtoonId,
+                    number: num,
+                    title: subj,
+                    arc: `Temporada Oficial · Webtoon ${num}`,
+                    synopsis: `Capítulo oficial ${num} de ${slug.replace(/-/g, ' ')}. Publicado oficialmente em ${dateStr}.`,
+                    cover: thmb,
+                    release_date: dateStr,
+                    views: 145000 + num * 320,
+                    likes: 18200 + num * 45,
+                    panels_count: 0,
+                    panels: [],
+                    viewer_url: link.replace(/&amp;/g, '&'),
+                    is_free: true,
+                  });
+                }
+              }
+            } catch {}
           });
 
-          const html = await upstream.text();
-          const episodeMatches = [...html.matchAll(/<li[^>]*id="episode_(\d+)"[^>]*>([\s\S]*?)<\/li>/gi)];
-
-          const chapters = episodeMatches.map((m) => {
-            const raw = m[2];
-            const num = parseInt(m[1], 10);
-            const link = raw.match(/href="([^"]+)"/)?.[1] || '';
-            const subj = raw.match(/<span class="subj"[^>]*>([\s\S]*?)<\/span>/)?.[1]?.replace(/<[^>]+>/g, '').trim() || `Episódio ${num}`;
-            const dateStr = raw.match(/<span class="date"[^>]*>([\s\S]*?)<\/span>/)?.[1]?.trim() || '';
-            const thmb = raw.match(/<img[^>]*src="([^"]+)"/)?.[1] || '';
-
-            return {
-              id: `${webtoonId}-ep-${num}`,
-              webtoon_id: webtoonId,
-              number: num,
-              title: subj,
-              arc: `Temporada Oficial · Webtoon ${num}`,
-              synopsis: `Capítulo oficial ${num} de ${slug.replace(/-/g, ' ')}. Publicado oficialmente em ${dateStr}.`,
-              cover: thmb,
-              release_date: dateStr,
-              views: 145000 + num * 320,
-              likes: 18200 + num * 45,
-              panels_count: 0,
-              panels: [],
-              viewer_url: link,
-              is_free: true,
-            };
-          });
-
-          // Also try RSS feed to complement
-          try {
-            const rssUrl = `https://www.webtoons.com/en/${genre}/${slug}/rss?title_no=${titleNo}`;
-            const rssRes = await fetch(rssUrl, {
-              headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
-            });
-            if (rssRes.ok) {
-              const rssXml = await rssRes.text();
-              const items = [...rssXml.matchAll(/<item>([\s\S]*?)<\/item>/g)];
-              for (const it of items) {
-                const raw = it[1];
-                const title = raw.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/)?.[1] || '';
-                const link = raw.match(/<link>(.*?)<\/link>/)?.[1] || '';
-                const pubDate = raw.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] || '';
-                const epMatch = link.match(/episode_no=(\d+)/);
-                if (epMatch) {
-                  const num = parseInt(epMatch[1], 10);
-                  const existing = chapters.find((c) => c.number === num);
-                  if (!existing) {
-                    chapters.push({
-                      id: `${webtoonId}-ep-${num}`,
-                      webtoon_id: webtoonId,
-                      number: num,
-                      title: title || `Episódio ${num}`,
-                      arc: `Lançamentos Recentes`,
-                      synopsis: `Capítulo oficial ${num}. Atualização direta da plataforma oficial Webtoon.`,
-                      cover: '',
-                      release_date: pubDate,
-                      views: 120000,
-                      likes: 15000,
-                      panels_count: 0,
-                      panels: [],
-                      viewer_url: link.replace(/&amp;/g, '&'),
-                      is_free: true,
-                    });
+          // Also fetch RSS feed for recent chapters
+          const rssPromise = (async () => {
+            try {
+              const rssUrl = `https://www.webtoons.com/en/${genre}/${slug}/rss?title_no=${titleNo}`;
+              const rssRes = await fetch(rssUrl, {
+                headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+              });
+              if (rssRes.ok) {
+                const rssXml = await rssRes.text();
+                const items = [...rssXml.matchAll(/<item>([\s\S]*?)<\/item>/g)];
+                for (const it of items) {
+                  const raw = it[1];
+                  const title = raw.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/)?.[1] || '';
+                  let link = raw.match(/<link>(.*?)<\/link>/)?.[1] || '';
+                  if (link && !link.startsWith('http')) {
+                    link = `https://www.webtoons.com${link}`;
+                  }
+                  const pubDate = raw.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] || '';
+                  const epMatch = link.match(/episode_no=(\d+)/);
+                  if (epMatch) {
+                    const num = parseInt(epMatch[1], 10);
+                    if (!chaptersMap.has(num)) {
+                      chaptersMap.set(num, {
+                        id: `${webtoonId}-ep-${num}`,
+                        webtoon_id: webtoonId,
+                        number: num,
+                        title: title || `Episódio ${num}`,
+                        arc: `Lançamentos Recentes`,
+                        synopsis: `Capítulo oficial ${num}. Atualização direta da plataforma oficial Webtoon.`,
+                        cover: '',
+                        release_date: pubDate,
+                        views: 120000,
+                        likes: 15000,
+                        panels_count: 0,
+                        panels: [],
+                        viewer_url: link.replace(/&amp;/g, '&'),
+                        is_free: true,
+                      });
+                    }
                   }
                 }
               }
-            }
-          } catch {}
+            } catch {}
+          })();
 
-          // Sort ascending by number
-          chapters.sort((a, b) => a.number - b.number);
+          await Promise.all([...listFetches, rssPromise]);
 
-          const payload = { success: true, titleNo, genre, slug, chapters };
+          const chapters = Array.from(chaptersMap.values()).sort((a, b) => a.number - b.number);
+
+          const payload = { success: true, titleNo, genre, slug, chapters, total: chapters.length };
           chaptersCache.set(cacheKey, { data: payload, timestamp: Date.now() });
 
           res.statusCode = 200;
@@ -1571,45 +1591,92 @@ function officialWebtoonIntegrationPlugin(): Plugin {
       server.middlewares.use('/api/webtoon/pages', async (req, res) => {
         try {
           const urlObj = new URL(req.url || '', `http://${req.headers.host || 'localhost:3000'}`);
-          const viewerUrl = urlObj.searchParams.get('viewerUrl');
+          let viewerUrl = urlObj.searchParams.get('viewerUrl') || '';
+          const titleNo = urlObj.searchParams.get('titleNo');
+          const genre = urlObj.searchParams.get('genre') || 'action';
+          const slug = urlObj.searchParams.get('slug') || '';
+          const episodeNo = urlObj.searchParams.get('episodeNo');
 
-          if (!viewerUrl) {
+          // Candidate URLs to try if viewerUrl is missing or 404s
+          const candidateUrls: string[] = [];
+          if (viewerUrl) candidateUrls.push(viewerUrl);
+
+          if (titleNo && episodeNo && slug) {
+            candidateUrls.push(
+              `https://www.webtoons.com/en/${genre}/${slug}/episode-${episodeNo}/viewer?title_no=${titleNo}&episode_no=${episodeNo}`,
+              `https://www.webtoons.com/en/${genre}/${slug}/ep-${episodeNo}/viewer?title_no=${titleNo}&episode_no=${episodeNo}`,
+              `https://www.webtoons.com/en/${genre}/${slug}/season-1-ep-${episodeNo}/viewer?title_no=${titleNo}&episode_no=${episodeNo}`,
+              `https://www.webtoons.com/en/${genre}/${slug}/prologue/viewer?title_no=${titleNo}&episode_no=${episodeNo}`
+            );
+          }
+
+          if (candidateUrls.length === 0) {
             res.statusCode = 400;
-            res.end(JSON.stringify({ error: 'Missing viewerUrl' }));
+            res.end(JSON.stringify({ error: 'Missing viewerUrl or titleNo/episodeNo' }));
             return;
           }
 
-          const cached = pagesCache.get(viewerUrl);
-          if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+          // Check memory cache for any candidate
+          for (const cand of candidateUrls) {
+            const cached = pagesCache.get(cand);
+            if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+              res.statusCode = 200;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ success: true, count: cached.pages.length, pages: cached.pages, resolvedUrl: cand }));
+              return;
+            }
+          }
+
+          let extractedPages: string[] = [];
+          let successfulUrl = '';
+
+          for (const tryUrl of candidateUrls) {
+            try {
+              const upstream = await fetch(tryUrl, {
+                redirect: 'follow',
+                headers: {
+                  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                  'Referer': 'https://www.webtoons.com/',
+                },
+              });
+
+              if (!upstream.ok) continue;
+
+              const html = await upstream.text();
+              const listMatch = html.match(/id="_imageList"[\s\S]*?<\/div>\s*<\/div>/i);
+              let rawPages: string[] = [];
+
+              if (listMatch) {
+                rawPages = [...listMatch[0].matchAll(/data-url="([^"]+)"/g)].map((m) => m[1]);
+              } else {
+                rawPages = [...html.matchAll(/data-url="([^"]+)"/g)].map((m) => m[1]);
+              }
+
+              // Filter out tracking/blank
+              rawPages = rawPages.filter((u) => u.includes('pstatic.net') || u.includes('webtoon-phinf'));
+
+              if (rawPages.length > 0) {
+                extractedPages = rawPages;
+                successfulUrl = tryUrl;
+                break;
+              }
+            } catch {}
+          }
+
+          if (extractedPages.length > 0) {
+            pagesCache.set(successfulUrl, { pages: extractedPages, timestamp: Date.now() });
+            if (viewerUrl && viewerUrl !== successfulUrl) {
+              pagesCache.set(viewerUrl, { pages: extractedPages, timestamp: Date.now() });
+            }
             res.statusCode = 200;
             res.setHeader('Content-Type', 'application/json');
-            res.end(JSON.stringify({ success: true, pages: cached.pages }));
+            res.end(JSON.stringify({ success: true, count: extractedPages.length, pages: extractedPages, resolvedUrl: successfulUrl }));
             return;
           }
-
-          const upstream = await fetch(viewerUrl, {
-            headers: {
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-              'Referer': 'https://www.webtoons.com/',
-            },
-          });
-
-          const html = await upstream.text();
-          const listMatch = html.match(/id="_imageList"[\s\S]*?<\/div>\s*<\/div>/i);
-          let rawPages: string[] = [];
-
-          if (listMatch) {
-            rawPages = [...listMatch[0].matchAll(/data-url="([^"]+)"/g)].map((m) => m[1]);
-          } else {
-            // Fallback match across all image elements
-            rawPages = [...html.matchAll(/data-url="([^"]+)"/g)].map((m) => m[1]).slice(0, 80);
-          }
-
-          pagesCache.set(viewerUrl, { pages: rawPages, timestamp: Date.now() });
 
           res.statusCode = 200;
           res.setHeader('Content-Type', 'application/json');
-          res.end(JSON.stringify({ success: true, count: rawPages.length, pages: rawPages }));
+          res.end(JSON.stringify({ success: false, count: 0, pages: [] }));
         } catch (err: any) {
           res.statusCode = 500;
           res.setHeader('Content-Type', 'application/json');
