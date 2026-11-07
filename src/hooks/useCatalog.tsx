@@ -490,7 +490,7 @@ export const useNews = () =>
 
       try {
         const { queryNewsArchive } = await import("@/lib/newsArchiveEngine");
-        const archiveResult = await queryNewsArchive({ pageSize: 60 });
+        const archiveResult = await queryNewsArchive({ pageSize: 300 });
         archivedItems = archiveResult.items || [];
       } catch {}
 

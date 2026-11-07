@@ -379,6 +379,28 @@ export async function syncOfficialWebtoonChapters(webtoonId: string): Promise<Of
   return [];
 }
 
+export const SOLO_LEVELING_MANGADEX_CHAPTERS: Record<number, string> = {
+  4: "11554150-0b01-40e0-a0a2-d15c30beb89c",
+  5: "b3f6f260-16ba-46e2-9123-bfba3a54502c",
+  6: "5f2a0487-43ba-42c9-9d42-49985241c202",
+  7: "28fbf3c4-065e-4b02-b030-b193a5af0b98",
+  8: "8eb2ec2e-bd25-44dc-9bff-90b5a07f3d9a",
+  9: "df241ad8-ba88-4e0a-aad8-ce582e8ab07c",
+  10: "eaa78703-c51e-4216-b8e6-9b5ee0d85efc",
+  11: "a36f0f7a-6c33-44f3-b112-137e5a92eeb0",
+  12: "d26501ec-caee-40ff-bd94-0a081ae1035d",
+  13: "b5c1465c-8e7c-4ce3-b90d-cc87c9f590ff",
+  14: "32d005d2-9e69-4425-bfd9-018944311f81",
+  15: "f6a796af-05cd-4421-988c-39691e18a25a",
+  16: "ff63b0ac-cf8f-4b90-ae10-ed270012ed2b",
+  17: "d445e3a3-c473-4514-87ad-3cb316aab06c",
+  18: "0005cebc-d486-4f6c-8623-282f56fd1893",
+  19: "0243d8f3-960d-4205-9204-295799f7ea04",
+  20: "a563b35e-5148-4d93-bc53-ba764a701766",
+  21: "746c4183-26d6-4e72-ad6d-37ce8aac7086",
+  22: "bda840bb-9b38-48a9-9a9e-714099fb4e49",
+};
+
 /**
  * Fetches the real comic strip pages from the official WEBTOON viewer.
  */
@@ -386,6 +408,26 @@ export async function fetchOfficialChapterPanels(
   viewerUrl?: string,
   fallbackOptions?: { webtoonId?: string; episodeNumber?: number }
 ): Promise<string[]> {
+  // 1. Check Solo Leveling MangaDex real scan chapters
+  if (fallbackOptions?.webtoonId && fallbackOptions?.episodeNumber) {
+    const norm = fallbackOptions.webtoonId.toLowerCase();
+    if (norm.includes("solo-leveling")) {
+      const mangadexId = SOLO_LEVELING_MANGADEX_CHAPTERS[fallbackOptions.episodeNumber];
+      if (mangadexId) {
+        try {
+          const { fetchMangaDexChapterPages } = await import("./mangadex");
+          const res = await fetchMangaDexChapterPages(mangadexId, "data");
+          if (res && res.pages && res.pages.length > 0) {
+            return res.pages;
+          }
+        } catch (e) {
+          console.warn("[WebtoonSync] MangaDex fetch for Solo Leveling failed:", e);
+        }
+      }
+    }
+  }
+
+  // 2. Check Webtoons.com official platform viewer
   let url = viewerUrl || "";
   let queryParams = "";
 

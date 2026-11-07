@@ -676,13 +676,14 @@ export const useEpisodes = (contentId?: string) =>
         // 2. Base local physical scans take precedence for local multi-page chapters
         for (const ep of baseEpisodes) {
           const existing = mergedMap.get(ep.number);
+          const panels = ep.panels && ep.panels.length > 0 ? ep.panels : existing?.images || [];
           mergedMap.set(ep.number, {
-            id: ep.id || existing?.id || `${contentId}-ep-${ep.number}`,
+            id: existing?.id || ep.id || `${contentId}-ep-${ep.number}`,
             content_id: contentId,
             number: ep.number,
             title: ep.title || existing?.title || `Capítulo ${ep.number}`,
             body: ep.synopsis || existing?.body || "",
-            images: ep.panels && ep.panels.length > 0 ? ep.panels : existing?.images || [],
+            images: panels,
             is_free: ep.is_free,
             published_at: ep.release_date || existing?.published_at || new Date().toISOString(),
             viewer_url: (ep as any).viewer_url || existing?.viewer_url || buildOfficialViewerUrl(contentId, ep.number),
@@ -692,13 +693,14 @@ export const useEpisodes = (contentId?: string) =>
         // 3. Official WEBTOON live scraped chapters override with live titles and exact platform links
         for (const ch of liveChapters) {
           const existing = mergedMap.get(ch.number);
+          const livePanels = ch.panels && ch.panels.length > 1 ? ch.panels : existing?.images || [];
           mergedMap.set(ch.number, {
-            id: ch.id || existing?.id || `${contentId}-ep-${ch.number}`,
+            id: existing?.id || ch.id || `${contentId}-ep-${ch.number}`,
             content_id: contentId,
             number: ch.number,
             title: ch.title || existing?.title || `Capítulo ${ch.number}`,
             body: ch.synopsis || existing?.body || "",
-            images: existing?.images && existing.images.length > 1 ? existing.images : (ch.panels || []),
+            images: livePanels,
             is_free: ch.is_free,
             published_at: ch.release_date || existing?.published_at || new Date().toISOString(),
             viewer_url: ch.viewer_url || existing?.viewer_url || buildOfficialViewerUrl(contentId, ch.number),

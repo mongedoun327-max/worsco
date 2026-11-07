@@ -173,30 +173,34 @@ const ContentReader = () => {
             </h1>
           </div>
 
-          {episode?.images?.length ? (
-            <div className="space-y-3 mb-10">
-              {episode.images.map((src, i) => (
-                <div key={i} className="relative rounded-lg overflow-hidden bg-muted/40 shadow-sm border border-border/50 min-h-[300px]">
-                  <img
-                    src={src}
-                    alt={`${episode.title} — painel ${i + 1}`}
-                    loading={i < 3 ? "eager" : "lazy"}
-                    onError={(e) => {
-                      const target = e.currentTarget;
-                      if (!target.dataset.hasFailed) {
-                        target.dataset.hasFailed = "true";
-                        target.style.display = "none";
-                      }
-                    }}
-                    className="w-full object-cover transition-opacity duration-300"
-                  />
-                  <span className="absolute bottom-2 right-2 text-[10px] px-2 py-0.5 rounded bg-black/60 text-white/80 font-mono">
-                    {i + 1}/{episode.images.length}
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : null}
+          {(() => {
+            const panels = episode?.images?.length ? episode.images : [];
+
+            return panels.length > 0 ? (
+              <div className="space-y-3 mb-10">
+                {panels.map((src, i) => (
+                  <div key={i} className="relative rounded-lg overflow-hidden bg-black shadow-2xl border border-border/50">
+                    <img
+                      src={src}
+                      alt={`${episode?.title || item.title} — painel ${i + 1}`}
+                      loading={i < 3 ? "eager" : "lazy"}
+                      onError={(e) => {
+                        const target = e.currentTarget;
+                        if (!target.dataset.retried && src.startsWith("http") && !src.includes("/api/proxy/")) {
+                          target.dataset.retried = "true";
+                          target.src = `/api/proxy/webtoon-image?url=${encodeURIComponent(src)}`;
+                        }
+                      }}
+                      className="w-full h-auto block select-none"
+                    />
+                    <span className="absolute bottom-2 right-2 text-[10px] px-2 py-0.5 rounded bg-black/70 text-white/80 font-mono">
+                      {i + 1}/{panels.length}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : null;
+          })()}
 
           <div className="text-sm text-muted-foreground font-light leading-relaxed whitespace-pre-line bg-card/60 p-6 rounded-2xl border border-border">
             {episode ? episode.body : item.body || item.description}

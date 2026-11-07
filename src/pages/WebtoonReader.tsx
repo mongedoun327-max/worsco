@@ -66,6 +66,7 @@ export const WebtoonReader = () => {
   const loadPanels = () => {
     if (!activeEpisode) return;
 
+    // Check if episode already has authentic local scans (e.g. Solo Leveling 1-3, ORV 1-2, TBATE 1, Nano Machine 1)
     if (activeEpisode.images && activeEpisode.images.length > 1) {
       setLivePanels(activeEpisode.images);
       setFetchFailed(false);
@@ -85,10 +86,12 @@ export const WebtoonReader = () => {
           setLivePanels(pages);
           setFetchFailed(false);
         } else {
+          setLivePanels([]);
           setFetchFailed(true);
         }
       })
       .catch(() => {
+        setLivePanels([]);
         setFetchFailed(true);
       })
       .finally(() => {
@@ -104,8 +107,9 @@ export const WebtoonReader = () => {
 
   const currentPanels = useMemo(() => {
     if (livePanels.length > 0) return livePanels;
-    return activeEpisode?.images && activeEpisode.images.length > 1 ? activeEpisode.images : [];
-  }, [livePanels, activeEpisode?.images]);
+    if (activeEpisode?.images && activeEpisode.images.length > 0) return activeEpisode.images;
+    return [];
+  }, [livePanels, activeEpisode]);
 
   // Community reactions
   const [reactions, setReactions] = useState<{ [key: string]: number }>({
@@ -420,7 +424,7 @@ export const WebtoonReader = () => {
         )}
 
         {/* Continuous Illustrated Manhwa Strip OR Official Chapter Showcase Card */}
-        {currentPanels && currentPanels.length > 1 ? (
+        {currentPanels && currentPanels.length > 0 ? (
           <div className={`w-full ${widthClasses[containerWidth]} flex flex-col items-center gap-0 shadow-2xl bg-black overflow-hidden`}>
             {currentPanels.map((panelUrl, index) => (
               <div key={index} className="w-full relative group bg-black">
@@ -431,7 +435,10 @@ export const WebtoonReader = () => {
                   decoding="async"
                   onError={(e) => {
                     const target = e.currentTarget;
-                    target.style.display = "none";
+                    if (!target.dataset.retried && panelUrl.startsWith("http") && !panelUrl.includes("/api/proxy/")) {
+                      target.dataset.retried = "true";
+                      target.src = `/api/proxy/webtoon-image?url=${encodeURIComponent(panelUrl)}`;
+                    }
                   }}
                   className="w-full h-auto block select-none pointer-events-auto"
                 />

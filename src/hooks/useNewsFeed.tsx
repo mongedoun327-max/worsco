@@ -28,10 +28,16 @@ export const useNewsFeed = (filters: NewsFilters) =>
         syndicated = getCachedNews();
       }
 
-      // 2. Fetch from Permanent Archive Engine (guarantees historical persistence)
+      // 2. Fetch from Permanent Archive Engine (guarantees historical persistence & genre coverage)
       let archiveItems: NewsItem[] = [];
       try {
-        const res = await queryNewsArchive({ pageSize: 120 });
+        const res = await queryNewsArchive({
+          category: filters.category && filters.category !== "all" ? filters.category : undefined,
+          q: filters.q,
+          year: filters.year && filters.year !== "all" ? parseInt(filters.year) : undefined,
+          month: filters.month && filters.month !== "all" ? parseInt(filters.month) : undefined,
+          pageSize: 250,
+        });
         archiveItems = res.items as NewsItem[];
       } catch {
         // Fallback gracefully
