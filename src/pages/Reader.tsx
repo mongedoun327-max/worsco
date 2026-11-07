@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -15,10 +15,20 @@ import {
   Share2,
   Search,
   X,
+  FileText,
+  Maximize2,
+  Minimize2,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useBook, useChapters } from "@/hooks/useCatalog";
 import { toast } from "sonner";
+import {
+  getOriginalPdfForBook,
+  getProxiedPdfUrl,
+  getDownloadPdfUrl,
+} from "@/lib/originalPdfRegistry";
+import OriginalPdfViewer from "@/components/books/OriginalPdfViewer";
 
 type ThemeMode = "light" | "sepia" | "dark" | "oled";
 type FontSizeMode = "sm" | "md" | "lg" | "xl";
@@ -75,6 +85,25 @@ const Reader = () => {
   const capParam = searchParams.get("cap");
   const { data: book, isLoading: isBookLoading } = useBook(id);
   const { data: chapters = [], isLoading: isChaptersLoading } = useChapters(id);
+
+  const originalPdf = useMemo(() => (id ? getOriginalPdfForBook(id) : undefined), [id]);
+  const modeParam = searchParams.get("mode");
+  const [readerView, setReaderView] = useState<"pdf" | "text">(() => {
+    if (modeParam === "text") return "text";
+    if (modeParam === "pdf") return "pdf";
+    return originalPdf ? "pdf" : "text";
+  });
+  const [isPdfFullscreen, setIsPdfFullscreen] = useState(false);
+
+  const togglePdfFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+      setIsPdfFullscreen(true);
+    } else {
+      document.exitFullscreen().catch(() => {});
+      setIsPdfFullscreen(false);
+    }
+  };
 
   const [index, setIndex] = useState(0);
   const [theme, setTheme] = useState<ThemeMode>(() => {
@@ -275,39 +304,99 @@ const Reader = () => {
             <span className="truncate">{book?.title ?? "Voltar"}</span>
           </Link>
 
-          {chapters.length > 0 && (
-            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-              {/* Chapter selector button */}
-              <button
-                onClick={() => setShowChaptersModal(true)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border ${currentTheme.border} ${currentTheme.card} hover:opacity-90 transition-all`}
-                title="Índice de Capítulos"
-              >
-                <List className="h-3.5 w-3.5" />
-                <span>
-                  Cap. {index + 1}/{chapters.length}
-                </span>
-              </button>
+          <div className="flex items-center gap-2">
+            {/* View Mode Switcher (PDF Original vs. Texto) if PDF is available */}
+            {originalPdf && (
+              <div className="flex items-center bg-black/10 dark:bg-white/10 rounded-full p-0.5 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setReaderView("pdf")}
+                  className={`flex items-center gap-1 px-3 py-1 rounded-full transition-all text-xs ${
+                    readerView === "pdf"
+                      ? "bg-emerald-600 text-white font-medium shadow-sm"
+                      : "opacity-70 hover:opacity-100"
+                  }`}
+                  title="Visualizar documento PDF original"
+                >
+                  <FileText className="h-3 w-3" />
+                  <span>PDF Original</span>
+                </button>
+                {chapters.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setReaderView("text")}
+                    className={`flex items-center gap-1 px-3 py-1 rounded-full transition-all text-xs ${
+                      readerView === "text"
+                        ? "bg-emerald-600 text-white font-medium shadow-sm"
+                        : "opacity-70 hover:opacity-100"
+                    }`}
+                    title="Alternar para leitura de texto adaptado"
+                  >
+                    <span>Texto</span>
+                  </button>
+                )}
+              </div>
+            )}
 
-              {/* Reader Appearance Settings */}
-              <button
-                onClick={() => setShowSettingsModal(!showSettingsModal)}
-                className={`p-2 rounded-full border ${currentTheme.border} ${currentTheme.card} hover:opacity-90 transition-all`}
-                title="Configurações de Leitura (Fonte, Cor, Tamanho)"
-              >
-                <Type className="h-4 w-4" />
-              </button>
+            {/* In PDF mode: Download and Fullscreen buttons */}
+            {originalPdf && readerView === "pdf" && (
+              <div className="flex items-center gap-1.5">
+                <a
+                  href={getDownloadPdfUrl(originalPdf.pdfUrl, `${originalPdf.title}-${originalPdf.author}.pdf`)}
+                  download={`${originalPdf.title}-${originalPdf.author}.pdf`}
+                  className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition-colors"
+                  title="Baixar arquivo PDF original do livro"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  <span>Baixar .pdf</span>
+                </a>
 
-              {/* Share */}
-              <button
-                onClick={handleShare}
-                className={`hidden sm:flex p-2 rounded-full border ${currentTheme.border} ${currentTheme.card} hover:opacity-90 transition-all`}
-                title="Compartilhar"
-              >
-                <Share2 className="h-4 w-4" />
-              </button>
-            </div>
-          )}
+                <button
+                  type="button"
+                  onClick={togglePdfFullscreen}
+                  className={`p-2 rounded-full border ${currentTheme.border} ${currentTheme.card} hover:opacity-90 transition-all`}
+                  title={isPdfFullscreen ? "Sair da tela cheia" : "Tela cheia do PDF"}
+                >
+                  {isPdfFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                </button>
+              </div>
+            )}
+
+            {/* In Text mode: chapter selector & appearance */}
+            {readerView === "text" && chapters.length > 0 && (
+              <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+                {/* Chapter selector button */}
+                <button
+                  onClick={() => setShowChaptersModal(true)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border ${currentTheme.border} ${currentTheme.card} hover:opacity-90 transition-all`}
+                  title="Índice de Capítulos"
+                >
+                  <List className="h-3.5 w-3.5" />
+                  <span>
+                    Cap. {index + 1}/{chapters.length}
+                  </span>
+                </button>
+
+                {/* Reader Appearance Settings */}
+                <button
+                  onClick={() => setShowSettingsModal(!showSettingsModal)}
+                  className={`p-2 rounded-full border ${currentTheme.border} ${currentTheme.card} hover:opacity-90 transition-all`}
+                  title="Configurações de Leitura (Fonte, Cor, Tamanho)"
+                >
+                  <Type className="h-4 w-4" />
+                </button>
+
+                {/* Share */}
+                <button
+                  onClick={handleShare}
+                  className={`hidden sm:flex p-2 rounded-full border ${currentTheme.border} ${currentTheme.card} hover:opacity-90 transition-all`}
+                  title="Compartilhar"
+                >
+                  <Share2 className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Floating Settings Dropdown */}
@@ -527,30 +616,71 @@ const Reader = () => {
       )}
 
       {/* Main Reading Canvas */}
-      <main className="mx-auto max-w-3xl px-5 sm:px-8 py-10 sm:py-16">
-        {isChaptersLoading || isBookLoading ? (
-          <div className="py-24 text-center">
-            <BookOpen className="mx-auto h-8 w-8 animate-pulse text-emerald-500 mb-4" />
-            <h2 className="text-xl font-medium">Carregando obra completa...</h2>
-            <p className="mt-2 text-xs opacity-60">
-              Conectando aos arquivos de alta fidelidade do Projeto Gutenberg
-            </p>
-          </div>
-        ) : chapters.length === 0 ? (
-          <div className="py-20 text-center">
-            <BookOpen className="mx-auto h-8 w-8 text-muted-foreground" />
-            <h1 className="mt-4 text-2xl font-display">Texto em processamento</h1>
-            <p className="mx-auto mt-3 max-w-sm text-sm opacity-70">
-              Não foi possível carregar os capítulos desta obra no momento.
-            </p>
-            <Button asChild className="mt-6 rounded-full">
-              <Link to={`/livros/${id}`}>Voltar ao detalhe</Link>
-            </Button>
-          </div>
-        ) : (
-          <article className={fontFamily === "serif" ? "font-serif" : "font-sans"}>
-            {/* Chapter Header */}
-            <header className="mb-12 pb-8 border-b border-black/10 dark:border-white/10 text-center">
+      {originalPdf && readerView === "pdf" ? (
+        <main className="w-full max-w-6xl mx-auto px-2 sm:px-6 py-4 sm:py-6">
+          <OriginalPdfViewer
+            pdfUrl={getProxiedPdfUrl(
+              originalPdf.pdfUrl,
+              `${originalPdf.title}-${originalPdf.author}.pdf`
+            )}
+            downloadUrl={getDownloadPdfUrl(
+              originalPdf.pdfUrl,
+              `${originalPdf.title}-${originalPdf.author}.pdf`
+            )}
+            originalPdfUrl={originalPdf.pdfUrl}
+            title={originalPdf.title}
+            author={originalPdf.author}
+            pagesCount={originalPdf.originalPagesCount}
+            fileSizeFormatted={originalPdf.fileSizeFormatted}
+            year={originalPdf.year}
+            sourceRepository={originalPdf.sourceRepository}
+            editionNotes={originalPdf.editionNotes}
+            onSwitchToText={() => setReaderView("text")}
+            hasTextMode={chapters.length > 0}
+          />
+        </main>
+      ) : (
+        <main className="mx-auto max-w-3xl px-5 sm:px-8 py-10 sm:py-16">
+          {/* Notice when viewing text mode but authentic original PDF is also available */}
+          {originalPdf && (
+            <div className="mb-8 p-3 sm:p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-medium">
+                <FileText className="h-4 w-4 shrink-0" />
+                <span>Esta obra possui a edição física integral original em PDF ({originalPdf.fileSizeFormatted}).</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReaderView("pdf")}
+                className="px-3 py-1.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs self-start sm:self-auto shrink-0 shadow-sm transition-colors"
+              >
+                Abrir PDF Original
+              </button>
+            </div>
+          )}
+
+          {isChaptersLoading || isBookLoading ? (
+            <div className="py-24 text-center">
+              <BookOpen className="mx-auto h-8 w-8 animate-pulse text-emerald-500 mb-4" />
+              <h2 className="text-xl font-medium">Carregando obra completa...</h2>
+              <p className="mt-2 text-xs opacity-60">
+                Conectando aos arquivos de alta fidelidade do Projeto Gutenberg
+              </p>
+            </div>
+          ) : chapters.length === 0 ? (
+            <div className="py-20 text-center">
+              <BookOpen className="mx-auto h-8 w-8 text-muted-foreground" />
+              <h1 className="mt-4 text-2xl font-display">Texto em processamento</h1>
+              <p className="mx-auto mt-3 max-w-sm text-sm opacity-70">
+                Não foi possível carregar os capítulos desta obra no momento.
+              </p>
+              <Button asChild className="mt-6 rounded-full">
+                <Link to={`/livros/${id}`}>Voltar ao detalhe</Link>
+              </Button>
+            </div>
+          ) : (
+            <article className={fontFamily === "serif" ? "font-serif" : "font-sans"}>
+              {/* Chapter Header */}
+              <header className="mb-12 pb-8 border-b border-black/10 dark:border-white/10 text-center">
               <div className="flex flex-wrap items-center justify-center gap-2 mb-3">
                 <span className="text-[11px] uppercase tracking-widest opacity-60 font-medium">
                   {book?.title} · Capítulo {chapter.position} de {chapters.length}
@@ -735,8 +865,9 @@ const Reader = () => {
           </article>
         )}
       </main>
-    </div>
-  );
+    )}
+  </div>
+);
 };
 
 export default Reader;

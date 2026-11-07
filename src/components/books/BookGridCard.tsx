@@ -1,9 +1,10 @@
 import { Link } from "react-router-dom";
-import { BookOpen, Sparkles, ArrowRight, Microscope, GraduationCap } from "lucide-react";
+import { BookOpen, Sparkles, ArrowRight, Microscope, GraduationCap, FileText } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import ProtectedImage from "@/components/ProtectedImage";
 import { Content } from "@/hooks/useContents";
 import { formatPrice } from "@/lib/format";
+import { hasOriginalPdf } from "@/lib/originalPdfRegistry";
 
 /** Catalog card: 2/3 cover, title, author, category pill, and direct read action */
 const BookGridCard = ({ book, free }: { book: Content; free?: boolean }) => {
@@ -11,6 +12,7 @@ const BookGridCard = ({ book, free }: { book: Content; free?: boolean }) => {
   const isSci = book.id.startsWith("sci-") || book.tags?.includes("Artigo Científico");
   const isCurr = book.id.startsWith("curr-") || book.tags?.includes("Disciplina Curricular");
   const isBestseller = book.id.startsWith("mod-");
+  const hasPdf = hasOriginalPdf(book.id);
 
   const detailLink = `/livros/${book.id}`;
   const readLink = `/ler/${book.id}`;
@@ -24,6 +26,12 @@ const BookGridCard = ({ book, free }: { book: Content; free?: boolean }) => {
             alt={`Capa do livro ${book.title}`}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           />
+          {hasPdf && (
+            <span className="absolute top-2 right-2 bg-rose-600/95 text-white text-[9px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full shadow-sm backdrop-blur flex items-center gap-1 z-10">
+              <FileText className="h-2.5 w-2.5" />
+              PDF
+            </span>
+          )}
           {isSci ? (
             <span className="absolute top-2 left-2 bg-teal-600/95 text-white text-[9px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full shadow-sm backdrop-blur flex items-center gap-1">
               <Microscope className="h-2.5 w-2.5" />
@@ -64,6 +72,12 @@ const BookGridCard = ({ book, free }: { book: Content; free?: boolean }) => {
                   {book.episode_count} {isSci ? "Seções" : isCurr ? "Unidades" : "Capítulos"}
                 </span>
               ) : null}
+              {hasPdf && (
+                <span className="text-[10px] uppercase tracking-wide px-2 py-0.5 bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30 rounded-sm font-semibold flex items-center gap-1">
+                  <FileText className="h-2.5 w-2.5" />
+                  PDF Original
+                </span>
+              )}
               {isSci ? (
                 <span className="text-[10px] uppercase tracking-wide px-2 py-0.5 bg-teal-500/10 text-teal-600 dark:text-teal-400 rounded-sm font-medium flex items-center gap-1">
                   <Microscope className="h-2.5 w-2.5" />

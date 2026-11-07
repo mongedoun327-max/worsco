@@ -1069,6 +1069,68 @@ function gutenbergBooksPlugin(): Plugin {
           res.end(JSON.stringify({ error: err.message, chapters: [] }));
         }
       });
+
+      // 3. Authentic Original PDF Proxy & Streaming
+      server.middlewares.use('/api/books/pdf-proxy', async (req, res) => {
+        try {
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+          res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type, Accept, Authorization');
+          res.setHeader('Accept-Ranges', 'bytes');
+
+          if (req.method === 'OPTIONS') {
+            res.statusCode = 204;
+            res.end();
+            return;
+          }
+
+          const urlObj = new URL(req.url || '', `http://${req.headers.host || 'localhost:3000'}`);
+          const targetPdf = urlObj.searchParams.get('url') || '';
+          const filename = urlObj.searchParams.get('filename') || 'livro-original.pdf';
+          const isDownload = urlObj.searchParams.get('download') === 'true';
+
+          if (!targetPdf) {
+            res.statusCode = 400;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Parâmetro url do PDF é obrigatório' }));
+            return;
+          }
+
+          const upstreamRes = await fetch(targetPdf, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 WorscoiPDFReader/2.0',
+              'Accept': 'application/pdf, application/octet-stream, */*',
+            },
+            signal: AbortSignal.timeout(35000),
+          });
+
+          if (!upstreamRes.ok) {
+            res.statusCode = upstreamRes.status;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: `Falha ao carregar PDF do servidor de origem (${upstreamRes.status})` }));
+            return;
+          }
+
+          const arrayBuffer = await upstreamRes.arrayBuffer();
+          const buffer = Buffer.from(arrayBuffer);
+
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'application/pdf');
+          res.setHeader('Content-Length', buffer.length);
+          res.setHeader(
+            'Content-Disposition',
+            isDownload
+              ? `attachment; filename="${encodeURIComponent(filename)}"`
+              : `inline; filename="${encodeURIComponent(filename)}"`
+          );
+          res.setHeader('Cache-Control', 'public, max-age=604800, stale-while-revalidate=2592000');
+          res.end(buffer);
+        } catch (err: any) {
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ error: err?.message || 'Erro ao processar stream do PDF original' }));
+        }
+      });
     },
   };
 }
@@ -1515,7 +1577,7 @@ function officialWebtoonIntegrationPlugin(): Plugin {
 
           const isMangaPillOrConan = targetUrl.includes('readdetectiveconan.com') || targetUrl.includes('mangapill.com');
           const isWebtoon = targetUrl.includes('webtoons.com') || targetUrl.includes('pstatic.net') || targetUrl.includes('webtoon-phinf');
-          const isMangaDex = targetUrl.includes('mangadex.org');
+          const isMangaDex = targetUrl.includes('mangadex.org') || targetUrl.includes('mangadex.network');
 
           const reqHeaders: Record<string, string> = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
@@ -1657,6 +1719,15 @@ function officialWebtoonIntegrationPlugin(): Plugin {
               if (found?.chapterUrl) {
                 chapterUrl = found.chapterUrl;
               }
+            }
+          }
+
+          // Normalize chapterUrl format if raw ID was passed (e.g. "723-10001000-chainsaw-man-chapter-1")
+          if (chapterUrl && !chapterUrl.startsWith('/') && !chapterUrl.startsWith('http')) {
+            if (/^\d+-\d+-/.test(chapterUrl)) {
+              chapterUrl = chapterUrl.replace(/^(\d+-\d+)-(.+)$/, '/chapters/$1/$2');
+            } else {
+              chapterUrl = `/chapters/${chapterUrl}`;
             }
           }
 

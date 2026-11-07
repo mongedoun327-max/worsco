@@ -112,7 +112,7 @@ export const AnimeMangaReader = () => {
           numericNumber: ch.number,
           title: ch.title,
           pagesCount: ch.pagesCount,
-          pages: ch.pages,
+          pages: ch.pages && ch.pages.length > 0 ? ch.pages : undefined,
           chapterUrl: (ch as any).chapterUrl,
           mangadexChapterId: ch.mangadexChapterId,
           source: ch.pages && ch.pages.length > 0 ? "local" : "manga",
@@ -122,9 +122,14 @@ export const AnimeMangaReader = () => {
       }
     }
 
-    // 2. Add online chapters
+    // 2. Add or merge online chapters
     for (const och of onlineChapters) {
-      if (!seenNumbers.has(och.numericNumber)) {
+      const existing = list.find((c) => c.numericNumber === och.numericNumber);
+      if (existing) {
+        if (!existing.chapterUrl && och.chapterUrl) existing.chapterUrl = och.chapterUrl;
+        if (!existing.mangadexChapterId && och.id) existing.mangadexChapterId = och.id;
+        if (och.id) existing.id = och.id;
+      } else {
         list.push({
           id: och.id,
           number: och.number,
@@ -166,13 +171,18 @@ export const AnimeMangaReader = () => {
     }
 
     if (chapterId) {
+      const cleanId = decodeURIComponent(chapterId).trim();
       return (
         allChapters.find(
           (c) =>
-            c.id === chapterId ||
-            String(c.number) === chapterId ||
-            c.chapterUrl === chapterId ||
-            c.mangadexChapterId === chapterId
+            c.id === cleanId ||
+            String(c.number) === cleanId ||
+            c.chapterUrl === cleanId ||
+            c.chapterUrl === `/chapters/${cleanId}` ||
+            c.mangadexChapterId === cleanId ||
+            (c.chapterUrl && c.chapterUrl.includes(cleanId)) ||
+            (c.id && c.id.includes(cleanId)) ||
+            (cleanId.includes("chapter-") && String(c.numericNumber) === cleanId.split("chapter-")[1])
         ) || allChapters[0]
       );
     }
@@ -182,7 +192,7 @@ export const AnimeMangaReader = () => {
 
   const chapterIndex = useMemo(() => {
     if (!currentChapter) return 0;
-    return allChapters.findIndex((c) => c.id === currentChapter.id);
+    return allChapters.findIndex((c) => c.id === currentChapter.id || c.numericNumber === currentChapter.numericNumber);
   }, [allChapters, currentChapter]);
 
   const prevChapter = chapterIndex > 0 ? allChapters[chapterIndex - 1] : null;
@@ -204,7 +214,7 @@ export const AnimeMangaReader = () => {
     }
 
     // Case 2: Fetch pages with multi-source fallback
-    const targetIdentifier = currentChapter.chapterUrl || currentChapter.mangadexChapterId || currentChapter.id;
+    const targetIdentifier = currentChapter.chapterUrl || currentChapter.id || currentChapter.mangadexChapterId || "";
     fetchAnimeMangaPages(anime.id, targetIdentifier, currentChapter.numericNumber)
       .then((res) => {
         if (!isMounted) return;
@@ -568,9 +578,15 @@ export const AnimeMangaReader = () => {
                   loading={idx < 3 ? "eager" : "lazy"}
                   onError={(e) => {
                     const target = e.currentTarget;
-                    if (!target.dataset.retried && !pageUrl.includes("/api/proxy/")) {
+                    if (!target.dataset.retried) {
                       target.dataset.retried = "true";
-                      target.src = `/api/proxy/manga-image?url=${encodeURIComponent(pageUrl)}`;
+                      if (!pageUrl.includes("/api/proxy/")) {
+                        target.src = `/api/proxy/manga-image?url=${encodeURIComponent(pageUrl)}`;
+                      } else {
+                        // Retry proxy request once with cache-buster
+                        const sep = pageUrl.includes("?") ? "&" : "?";
+                        target.src = `${pageUrl}${sep}_t=${Date.now()}`;
+                      }
                     }
                   }}
                 />
@@ -591,9 +607,14 @@ export const AnimeMangaReader = () => {
                 onError={(e) => {
                   const target = e.currentTarget;
                   const currentSrc = resolvedPages[currentPageIndex];
-                  if (!target.dataset.retried && currentSrc && !currentSrc.includes("/api/proxy/")) {
+                  if (!target.dataset.retried && currentSrc) {
                     target.dataset.retried = "true";
-                    target.src = `/api/proxy/manga-image?url=${encodeURIComponent(currentSrc)}`;
+                    if (!currentSrc.includes("/api/proxy/")) {
+                      target.src = `/api/proxy/manga-image?url=${encodeURIComponent(currentSrc)}`;
+                    } else {
+                      const sep = currentSrc.includes("?") ? "&" : "?";
+                      target.src = `${currentSrc}${sep}_t=${Date.now()}`;
+                    }
                   }
                 }}
                 onClick={() => {

@@ -1,9 +1,10 @@
 import { Link } from "react-router-dom";
-import { BookOpen, ArrowRight, Sparkles } from "lucide-react";
+import { BookOpen, ArrowRight, Sparkles, FileText } from "lucide-react";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Book } from "@/hooks/useCatalog";
 import { formatPrice } from "@/lib/format";
+import { hasOriginalPdf } from "@/lib/originalPdfRegistry";
 
 interface BookCardProps {
   book: Book;
@@ -15,7 +16,9 @@ interface BookCardProps {
   progress?: number;
 }
 
-export const BookCardContent = ({ book, href, badge, reason, similarity, progress }: BookCardProps) => (
+export const BookCardContent = ({ book, href, badge, reason, similarity, progress }: BookCardProps) => {
+  const hasPdf = hasOriginalPdf(book.id);
+  return (
   <Link to={href ?? `/livros/${book.id}`} className="block">
     <div className="relative h-48 overflow-hidden bg-accent">
       <img
@@ -24,6 +27,12 @@ export const BookCardContent = ({ book, href, badge, reason, similarity, progres
         loading="lazy"
         className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
       />
+      {hasPdf && (
+        <div className="absolute top-3 left-3 bg-rose-600/95 text-white backdrop-blur-sm px-2 py-0.5 rounded-full flex items-center gap-1 shadow-sm text-[10px] font-bold">
+          <FileText className="h-3 w-3" />
+          <span>PDF Original</span>
+        </div>
+      )}
       {(badge || book.featured) && (
         <div className="absolute top-3 right-3 bg-card/95 backdrop-blur-sm px-2 py-1 rounded-md flex items-center gap-1">
           <Sparkles className="h-3 w-3 fill-primary text-primary" />
@@ -68,7 +77,8 @@ export const BookCardContent = ({ book, href, badge, reason, similarity, progres
       </div>
     </div>
   </Link>
-);
+  );
+};
 
 const BookCard = (props: BookCardProps) => (
   <Card className="overflow-hidden border border-border bg-card shadow-soft hover:shadow-lg transition-shadow duration-300">

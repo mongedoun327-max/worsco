@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/card";
 import { useContent, useTrackInteraction, useProgress, CONTENT_LABELS } from "@/hooks/useContents";
 import { useSimilar, useBecauseYouRead } from "@/hooks/useRecommendations";
 import { formatPrice } from "@/lib/format";
+import { getOriginalPdfForBook, getDownloadPdfUrl } from "@/lib/originalPdfRegistry";
 
 const ContentDetail = () => {
   const { id } = useParams();
@@ -22,6 +23,8 @@ const ContentDetail = () => {
   const { data: progress } = useProgress(id);
   const track = useTrackInteraction();
   const [saved, setSaved] = useState(false);
+
+  const originalPdf = id ? getOriginalPdfForBook(id) : undefined;
 
   useEffect(() => {
     if (id) track(id, "view");
@@ -156,6 +159,30 @@ const ContentDetail = () => {
                 </div>
               )}
 
+              {originalPdf && (
+                <div className="mb-6 p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-xs">
+                  <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-medium mb-1">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span>Livro Físico Original em PDF Anexado</span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground font-light mb-3">
+                    Edição física integral digitalizada em alta resolução ({originalPdf.originalPagesCount} páginas • {originalPdf.fileSizeFormatted}).
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      asChild
+                      size="sm"
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-full text-xs font-medium w-full"
+                    >
+                      <Link to={`/ler/${item.id}?mode=pdf`}>
+                        <BookOpen className="mr-1.5 h-3.5 w-3.5" />
+                        Ler PDF Original
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               <Button
                 asChild
                 className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-md smooth-hover text-[11px] uppercase tracking-wider font-normal shadow-md"
@@ -172,7 +199,9 @@ const ContentDetail = () => {
                         item.id.startsWith("curr-") ||
                         item.id.startsWith("mod-") ||
                         item.id.startsWith("auto-")
-                      ? `/ler/${item.id}`
+                      ? originalPdf
+                        ? `/ler/${item.id}?mode=pdf`
+                        : `/ler/${item.id}`
                       : `/leitura/${item.id}`
                   }
                   onClick={() => track(item.id, "read")}
@@ -181,6 +210,8 @@ const ContentDetail = () => {
                     ? ["wt-solo-leveling", "wt-omniscient-reader", "wt-the-beginning-after-the-end", "wt-nano-machine"].includes(item.id)
                       ? progress?.progress_percentage ? "Continuar lendo" : "Ler obra completa agora"
                       : "Ver Ficha & Lançamentos Oficiais"
+                    : originalPdf
+                    ? "Ler PDF Original Completo"
                     : progress?.progress_percentage ? "Continuar lendo" : "Ler obra completa agora"}
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
@@ -198,17 +229,35 @@ const ContentDetail = () => {
                   <Headphones className="mr-2 h-3 w-3" />
                   Ouvir
                 </Button>
-                <Button
-                  variant="outline"
-                  className="rounded-md text-[11px] uppercase tracking-wider font-normal"
-                  onClick={() => {
-                    track(item.id, "download");
-                    toast.info("Download disponível após a confirmação da reserva");
-                  }}
-                >
-                  <Download className="mr-2 h-3 w-3" />
-                  Baixar
-                </Button>
+
+                {originalPdf ? (
+                  <Button
+                    asChild
+                    variant="outline"
+                    className="rounded-md text-[11px] uppercase tracking-wider font-normal text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
+                  >
+                    <a
+                      href={getDownloadPdfUrl(originalPdf.pdfUrl, `${originalPdf.title}-${originalPdf.author}.pdf`)}
+                      download={`${originalPdf.title}-${originalPdf.author}.pdf`}
+                    >
+                      <Download className="mr-2 h-3 w-3" />
+                      Baixar PDF
+                    </a>
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    className="rounded-md text-[11px] uppercase tracking-wider font-normal"
+                    onClick={() => {
+                      track(item.id, "download");
+                      toast.info("Download disponível");
+                    }}
+                  >
+                    <Download className="mr-2 h-3 w-3" />
+                    Baixar
+                  </Button>
+                )}
+
                 <Button variant="outline" className="rounded-md text-[11px] uppercase tracking-wider font-normal" onClick={share}>
                   <Share2 className="mr-2 h-3 w-3" />
                   Partilhar

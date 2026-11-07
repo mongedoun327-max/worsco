@@ -510,19 +510,27 @@ export async function fetchAnimeMangaPages(
     }
   }
 
-  // Primary Path: Scrape high-res manga chapter pages via /api/manga/pages
+  // Primary Path: High-res manga chapter pages via /api/manga/pages
   try {
-    let query = "";
-    if (chapterIdentifier.startsWith("/chapters/") || chapterIdentifier.includes("-chapter-")) {
-      const cleanUrl = chapterIdentifier.startsWith("/chapters/")
-        ? chapterIdentifier
-        : `/chapters/${chapterIdentifier.replace(/-/g, "/")}`;
-      query = `chapterUrl=${encodeURIComponent(cleanUrl)}`;
-    } else {
-      query = `animeId=${encodeURIComponent(animeId)}&chapterNumber=${chapterNumber || 1}`;
+    let cleanUrl = chapterIdentifier;
+    if (chapterIdentifier.startsWith("/chapters/")) {
+      cleanUrl = chapterIdentifier;
+    } else if (/^\d+-\d+-/.test(chapterIdentifier)) {
+      cleanUrl = chapterIdentifier.replace(/^(\d+-\d+)-(.+)$/, '/chapters/$1/$2');
     }
 
-    const res = await fetch(`/api/manga/pages?${query}`);
+    const params = new URLSearchParams();
+    if (cleanUrl.startsWith('/chapters/') || cleanUrl.startsWith('http')) {
+      params.set('chapterUrl', cleanUrl);
+    }
+    if (animeId) {
+      params.set('animeId', animeId);
+    }
+    if (chapterNumber) {
+      params.set('chapterNumber', String(chapterNumber));
+    }
+
+    const res = await fetch(`/api/manga/pages?${params.toString()}`);
     if (res.ok) {
       const data = await res.json();
       if (data.success && Array.isArray(data.pages) && data.pages.length > 0) {
@@ -532,13 +540,18 @@ export async function fetchAnimeMangaPages(
       }
     }
   } catch (err) {
-    console.warn("Manga pages API fetch error:", err);
+    console.warn("Primary manga pages API fetch error:", err);
   }
 
-  // Fallback to legacy MangaDex at-home proxy if an authentic UUID is passed
-  if (chapterIdentifier.length === 36 && chapterIdentifier.includes("-")) {
+  // Secondary Path: MangaDex at-home proxy
+  // A. Direct UUID passed
+  const uuidCandidate = chapterIdentifier.length === 36 && chapterIdentifier.includes("-")
+    ? chapterIdentifier
+    : null;
+
+  if (uuidCandidate) {
     try {
-      const res = await fetch(`/api/mangadex/server?chapterId=${chapterIdentifier}`);
+      const res = await fetch(`/api/mangadex/server?chapterId=${uuidCandidate}`);
       if (res.ok) {
         const json = await res.json();
         if (json.result === "ok" && json.baseUrl && json.chapter) {
@@ -556,6 +569,42 @@ export async function fetchAnimeMangaPages(
         }
       }
     } catch {}
+  }
+
+  // B. Dynamic MangaDex lookup by anime's mangadexId and chapterNumber
+  if (config?.mangadexId && chapterNumber) {
+    try {
+      const feedRes = await fetch(`/api/mangadex/feed?mangaId=${config.mangadexId}&lang=all&limit=100`);
+      if (feedRes.ok) {
+        const feedData = await feedRes.json();
+        const chItem = (feedData.data || []).find((c: any) => {
+          const num = parseFloat(c.attributes?.chapter || "0");
+          return num === chapterNumber;
+        });
+
+        if (chItem?.id) {
+          const serverRes = await fetch(`/api/mangadex/server?chapterId=${chItem.id}`);
+          if (serverRes.ok) {
+            const sJson = await serverRes.json();
+            if (sJson.result === "ok" && sJson.baseUrl && sJson.chapter) {
+              const { baseUrl, chapter } = sJson;
+              const hash = chapter.hash;
+              const files: string[] = chapter.data || chapter.dataSaver || [];
+              const pages = files.map(
+                (file) => `/api/proxy/manga-image?url=${encodeURIComponent(`${baseUrl}/data/${hash}/${file}`)}`
+              );
+              if (pages.length > 0) {
+                const result = { baseUrl, hash, pages };
+                pagesMemoryCache.set(cacheKey, result);
+                return result;
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("MangaDex dynamic chapter fallback error:", e);
+    }
   }
 
   throw new Error("Não foi possível carregar as páginas do capítulo selecionado.");
