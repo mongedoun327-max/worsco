@@ -237,8 +237,8 @@ const ContentDetail = () => {
                     className="rounded-md text-[11px] uppercase tracking-wider font-normal text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
                   >
                     <a
-                      href={getDownloadPdfUrl(originalPdf.pdfUrl, `${originalPdf.title}-${originalPdf.author}.pdf`)}
-                      download={`${originalPdf.title}-${originalPdf.author}.pdf`}
+                      href={getDownloadPdfUrl(originalPdf.pdfUrl, `${originalPdf.title}-${originalPdf.author}.pdf`, originalPdf.id)}
+                      download={`${originalPdf.title.replace(/[^\w\s-]/g, "")}-${originalPdf.author.replace(/[^\w\s-]/g, "")}.pdf`}
                     >
                       <Download className="mr-2 h-3 w-3" />
                       Baixar PDF

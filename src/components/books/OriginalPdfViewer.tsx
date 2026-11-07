@@ -374,7 +374,7 @@ export const OriginalPdfViewer: React.FC<OriginalPdfViewerProps> = ({
 
           <a
             href={downloadUrl}
-            download={`${title}-${author}.pdf`}
+            download={`${title.replace(/[^\w\s-]/g, "")}-${author.replace(/[^\w\s-]/g, "")}.pdf`}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium shadow-sm transition-colors"
             title="Baixar arquivo físico original em formato .pdf"
           >
@@ -617,7 +617,7 @@ export const OriginalPdfViewer: React.FC<OriginalPdfViewerProps> = ({
                 </Button>
                 <a
                   href={downloadUrl}
-                  download={`${title}-${author}.pdf`}
+                  download={`${title.replace(/[^\w\s-]/g, "")}-${author.replace(/[^\w\s-]/g, "")}.pdf`}
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-1 px-4 py-2 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition-colors"
                 >
                   <Download className="h-3.5 w-3.5" />

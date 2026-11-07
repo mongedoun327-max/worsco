@@ -15,9 +15,11 @@ import { useContentFeed } from "@/hooks/useContentFeed";
 import { useContents, ContentType } from "@/hooks/useContents";
 import { useContentProtection } from "@/hooks/useContentProtection";
 import { BOOK_CATEGORIES, freeBookOfTheDay } from "@/lib/books";
+import { hasOriginalPdf } from "@/lib/originalPdfRegistry";
 
 const TABS = [
   { value: "all", label: "Todos os Acervos" },
+  { value: "pdf", label: "Edições em PDF" },
   { value: "book", label: "Livros & Obras" },
   { value: "academic", label: "Artigos Científicos" },
   { value: "curricular", label: "Disciplinas Curriculares" },
@@ -42,14 +44,16 @@ const Books = () => {
   const freeBook = useMemo(() => freeBookOfTheDay(all.filter((i) => i.cover || i.description)), [all]);
   const recommended = useMemo(() => [...all].sort((a, b) => b.rating - a.rating).slice(0, 10), [all]);
 
-  // Combine feed items, modern bestsellers, academic papers and curricular books without duplication
+  // Combine feed items, modern bestsellers, academic papers, curricular books and PDF editions without duplication
   const combinedItems = useMemo(() => {
     const map = new Map<string, any>();
     for (const it of all) map.set(it.id, it);
     for (const it of feedItems) map.set(it.id, it);
     let list = Array.from(map.values());
 
-    if (typeParam === "academic") {
+    if (typeParam === "pdf") {
+      list = list.filter((i) => hasOriginalPdf(i.id) || i.formats?.includes("PDF Original") || i.tags?.includes("PDF Original"));
+    } else if (typeParam === "academic") {
       list = list.filter((i) => i.id?.startsWith("sci-") || i.type === "academic" || i.category === "Artigos Científicos");
     } else if (typeParam === "curricular") {
       list = list.filter((i) => i.id?.startsWith("curr-") || i.category === "Disciplinas Curriculares" || i.collection === "Disciplinas Curriculares");

@@ -342,8 +342,8 @@ const Reader = () => {
             {originalPdf && readerView === "pdf" && (
               <div className="flex items-center gap-1.5">
                 <a
-                  href={getDownloadPdfUrl(originalPdf.pdfUrl, `${originalPdf.title}-${originalPdf.author}.pdf`)}
-                  download={`${originalPdf.title}-${originalPdf.author}.pdf`}
+                  href={getDownloadPdfUrl(originalPdf.pdfUrl, `${originalPdf.title}-${originalPdf.author}.pdf`, originalPdf.id)}
+                  download={`${originalPdf.title.replace(/[^\w\s-]/g, "")}-${originalPdf.author.replace(/[^\w\s-]/g, "")}.pdf`}
                   className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition-colors"
                   title="Baixar arquivo PDF original do livro"
                 >
@@ -621,11 +621,13 @@ const Reader = () => {
           <OriginalPdfViewer
             pdfUrl={getProxiedPdfUrl(
               originalPdf.pdfUrl,
-              `${originalPdf.title}-${originalPdf.author}.pdf`
+              `${originalPdf.title}-${originalPdf.author}.pdf`,
+              originalPdf.id
             )}
             downloadUrl={getDownloadPdfUrl(
               originalPdf.pdfUrl,
-              `${originalPdf.title}-${originalPdf.author}.pdf`
+              `${originalPdf.title}-${originalPdf.author}.pdf`,
+              originalPdf.id
             )}
             originalPdfUrl={originalPdf.pdfUrl}
             title={originalPdf.title}

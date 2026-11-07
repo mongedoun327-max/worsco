@@ -1,6 +1,6 @@
 import { motion, useScroll, useTransform } from "framer-motion";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { BookOpen, ArrowLeft, ArrowRight, Check, Sparkles, Search, X } from "lucide-react";
+import { BookOpen, ArrowLeft, ArrowRight, Check, Sparkles, Search, X, FileText, Download } from "lucide-react";
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import Navigation from "@/components/Navigation";
@@ -11,6 +11,7 @@ import { useBook, useChapters, usePurchases } from "@/hooks/useCatalog";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { formatPrice } from "@/lib/format";
+import { getOriginalPdfForBook, getDownloadPdfUrl } from "@/lib/originalPdfRegistry";
 
 const BookDetail = () => {
   const { id } = useParams();
@@ -24,6 +25,8 @@ const BookDetail = () => {
   const [submitting, setSubmitting] = useState(false);
   const [chapterSearch, setChapterSearch] = useState("");
   const [selectedRange, setSelectedRange] = useState<number | "all">("all");
+
+  const originalPdf = useMemo(() => (id ? getOriginalPdfForBook(id) : undefined), [id]);
 
   const filteredChapters = useMemo(() => {
     let list = chapters;
@@ -299,15 +302,57 @@ const BookDetail = () => {
               </ul>
 
               {canRead ? (
-                <Button
-                  asChild
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-md smooth-hover text-[11px] uppercase tracking-wider font-normal shadow-md"
-                >
-                  <Link to={`/ler/${book.id}`}>
-                    Ler Obra Completa Agora
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
+                <div className="space-y-2.5">
+                  {originalPdf && (
+                    <Button
+                      asChild
+                      className="w-full bg-rose-600 hover:bg-rose-700 text-white rounded-md smooth-hover text-[11px] uppercase tracking-wider font-semibold shadow-md flex items-center justify-center gap-2"
+                    >
+                      <Link to={`/ler/${book.id}?mode=pdf`}>
+                        <FileText className="h-4 w-4" />
+                        Ler Edição em PDF Original
+                        <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                      </Link>
+                    </Button>
+                  )}
+
+                  <Button
+                    asChild
+                    variant={originalPdf ? "outline" : "default"}
+                    className={`w-full ${originalPdf ? "border-emerald-600/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30" : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-md"} rounded-md smooth-hover text-[11px] uppercase tracking-wider font-normal`}
+                  >
+                    <Link to={`/ler/${book.id}?mode=text`}>
+                      {originalPdf ? "Ler em Modo Texto Adaptado" : "Ler Obra Completa Agora"}
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
+
+                  {originalPdf && (
+                    <div className="pt-2">
+                      <a
+                        href={getDownloadPdfUrl(originalPdf.pdfUrl, `${originalPdf.title}-${originalPdf.author}.pdf`, originalPdf.id)}
+                        download={`${originalPdf.title.replace(/[^\w\s-]/g, "")}-${originalPdf.author.replace(/[^\w\s-]/g, "")}.pdf`}
+                        className="w-full py-2 px-3 border border-border/80 hover:border-border rounded-md text-xs font-light text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center gap-2 bg-secondary/30"
+                      >
+                        <Download className="h-3.5 w-3.5 text-rose-500" />
+                        <span>Baixar PDF ({originalPdf.fileSizeFormatted})</span>
+                      </a>
+                      <div className="mt-3 p-3 rounded-lg bg-accent/40 border border-border/60 text-[11px] text-muted-foreground font-light space-y-1">
+                        <div className="flex justify-between">
+                          <span className="text-foreground font-medium">Páginas físicas:</span>
+                          <span>{originalPdf.originalPagesCount} páginas</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-foreground font-medium">Acervo:</span>
+                          <span className="truncate max-w-[140px] text-right">{originalPdf.sourceRepository}</span>
+                        </div>
+                        <p className="pt-1 text-[10px] text-muted-foreground/80 leading-normal border-t border-border/40">
+                          {originalPdf.editionNotes}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
               ) : purchase ? (
                 <div className="text-center">
                   <Sparkles className="h-4 w-4 text-primary mx-auto mb-3" />

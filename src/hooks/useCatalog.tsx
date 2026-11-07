@@ -195,8 +195,37 @@ export const useBooks = (search = "") =>
         // Fallback gracefully
       }
 
+      // Fetch Original PDF Registry books across diverse styles
+      let pdfBooks: Book[] = [];
+      try {
+        const { getAllOriginalPdfBooks } = await import("@/lib/originalPdfRegistry");
+        const list = getAllOriginalPdfBooks();
+        pdfBooks = list
+          .filter((p) =>
+            search
+              ? p.title.toLowerCase().includes(search.toLowerCase()) ||
+                p.author.toLowerCase().includes(search.toLowerCase()) ||
+                p.category.toLowerCase().includes(search.toLowerCase()) ||
+                (p.description && p.description.toLowerCase().includes(search.toLowerCase()))
+              : true
+          )
+          .map((p) => ({
+            id: p.id,
+            title: p.title,
+            author: p.author,
+            description: p.description || p.editionNotes,
+            cover_url: p.coverUrl,
+            price_cents: 0,
+            currency: "BRL",
+            category: p.category,
+            published: true,
+            featured: true,
+            created_at: new Date(p.year > 0 ? p.year : 2024, 0, 1).toISOString(),
+          }));
+      } catch {}
+
       const map = new Map<string, Book>();
-      // Scientific Articles & Curricular Textbooks first, then Auto, Modern, Gutenberg, DB
+      // Scientific Articles & Curricular Textbooks first, then Auto, Modern, Gutenberg, Original PDFs, DB
       for (const b of sciBooks) map.set(b.id, b);
       for (const b of currBooks) map.set(b.id, b);
       for (const b of autoBooks) {
@@ -206,6 +235,9 @@ export const useBooks = (search = "") =>
         if (!map.has(b.id)) map.set(b.id, b);
       }
       for (const b of gutenBooks) {
+        if (!map.has(b.id)) map.set(b.id, b);
+      }
+      for (const b of pdfBooks) {
         if (!map.has(b.id)) map.set(b.id, b);
       }
       for (const b of dbBooks) {
@@ -381,6 +413,27 @@ export const useBook = (id?: string) =>
         }
       } catch {}
 
+      // Original PDF Registry lookup
+      try {
+        const { getOriginalPdfForBook } = await import("@/lib/originalPdfRegistry");
+        const pdf = getOriginalPdfForBook(id);
+        if (pdf) {
+          return {
+            id: pdf.id,
+            title: pdf.title,
+            author: pdf.author,
+            description: pdf.description || pdf.editionNotes,
+            cover_url: pdf.coverUrl,
+            price_cents: 0,
+            currency: "BRL",
+            category: pdf.category,
+            published: true,
+            featured: true,
+            created_at: new Date(pdf.year > 0 ? pdf.year : 2024, 0, 1).toISOString(),
+          } as Book;
+        }
+      } catch {}
+
       return null;
     },
   });
@@ -456,6 +509,24 @@ export const useChapters = (bookId?: string) =>
         const { fetchGutenbergChapters } = await import("@/lib/gutenbergBooks");
         const chaps = await fetchGutenbergChapters(bookId);
         if (chaps && chaps.length > 0) return chaps as Chapter[];
+      } catch {}
+
+      // Check Original PDF Registry for default full digitized edition chapter
+      try {
+        const { getOriginalPdfForBook } = await import("@/lib/originalPdfRegistry");
+        const pdf = getOriginalPdfForBook(bookId);
+        if (pdf) {
+          return [
+            {
+              id: `${pdf.id}-edicao-integral`,
+              book_id: pdf.id,
+              position: 1,
+              title: `Edição Digitalizada Oficial (${pdf.originalPagesCount} Páginas)`,
+              content: `### ${pdf.title}\n\n**Autor:** ${pdf.author} (${pdf.year > 0 ? pdf.year : `${Math.abs(pdf.year)} a.C.`})\n\n**Edição Canônica Preservada:** ${pdf.editionNotes}\n\n**Acervo Oficial:** ${pdf.sourceRepository}\n**Tamanho do Arquivo:** ${pdf.fileSizeFormatted} · **Total de Páginas Físicas:** ${pdf.originalPagesCount}\n\nEsta obra está disponível no formato fac-similar original de alta definição com todos os capítulos, ilustrações de época e diagramação original preservados. Utilize o leitor interativo de PDF para folhear as páginas, aplicar zoom e navegar pelo índice, ou utilize o botão de alternância para o modo de leitura rápida.`,
+              is_free_preview: true,
+            },
+          ] as Chapter[];
+        }
       } catch {}
 
       return [] as Chapter[];

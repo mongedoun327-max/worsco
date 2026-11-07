@@ -10,15 +10,15 @@ export interface SyndicatedNewsItem extends NewsItem {
   key_takeaways?: string[];
 }
 
-const STORAGE_KEY = "worscoi_syndicated_news_v8";
-const LAST_SYNC_KEY = "worscoi_news_last_sync_v8";
+const STORAGE_KEY = "worscoi_syndicated_news_v9";
+const LAST_SYNC_KEY = "worscoi_news_last_sync_v9";
 const SYNC_INTERVAL_MS = 6 * 60 * 1000; // 6 minutes cache TTL
 
 /** Clear legacy versions from localStorage */
 const clearLegacyCache = () => {
   if (typeof window === "undefined") return;
   try {
-    for (let i = 1; i <= 7; i++) {
+    for (let i = 1; i <= 8; i++) {
       localStorage.removeItem(`worscoi_syndicated_news_v${i}`);
       localStorage.removeItem(`worscoi_news_last_sync_v${i}`);
     }
@@ -35,13 +35,7 @@ export const getCachedNews = (): SyndicatedNewsItem[] => {
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed) && parsed.length > 0) {
-      return parsed.map((item) => {
-        // Guarantee every item has deep report depth
-        if (!item.content || item.content.length < 1200 || !item.content.includes("### ")) {
-          return expandNewsToDeepReport(item);
-        }
-        return item;
-      });
+      return parsed.map((item) => expandNewsToDeepReport(item));
     }
     return [];
   } catch {
@@ -53,8 +47,8 @@ export const getCachedNews = (): SyndicatedNewsItem[] => {
 export const setCachedNews = (items: SyndicatedNewsItem[]) => {
   if (typeof window === "undefined") return;
   try {
-    const enriched = items.map((it) => expandNewsToDeepReport(it));
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(enriched));
+    const cleaned = items.map((it) => expandNewsToDeepReport(it));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned));
     localStorage.setItem(LAST_SYNC_KEY, Date.now().toString());
     window.dispatchEvent(new Event("worscoi_news_synced"));
   } catch {

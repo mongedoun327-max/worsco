@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Sparkles, Timer, ArrowRight } from "lucide-react";
+import { Sparkles, Timer, ArrowRight, FileText } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import ProtectedImage from "@/components/ProtectedImage";
 import { Content, contentHref } from "@/hooks/useContents";
+import { hasOriginalPdf } from "@/lib/originalPdfRegistry";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
@@ -65,6 +66,12 @@ const FreeBookHero = ({ book }: { book?: Content }) => {
               <span className="text-[10px] uppercase tracking-wide px-2 py-1 bg-accent text-accent-foreground rounded-sm font-light">
                 {book.category}
               </span>
+              {hasOriginalPdf(book.id) && (
+                <span className="text-[10px] uppercase tracking-wide px-2 py-1 bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30 rounded-sm font-semibold inline-flex items-center gap-1">
+                  <FileText className="h-3 w-3" />
+                  PDF Original Disponível
+                </span>
+              )}
               <span className="text-[10px] uppercase tracking-wide px-2 py-1 bg-accent text-accent-foreground rounded-sm font-light inline-flex items-center gap-1 tabular-nums">
                 <Timer className="h-3 w-3" /> Restam {time}
               </span>
@@ -81,6 +88,14 @@ const FreeBookHero = ({ book }: { book?: Content }) => {
                   <ArrowRight className="ml-2 h-3.5 w-3.5" />
                 </Link>
               </Button>
+              {hasOriginalPdf(book.id) && (
+                <Button asChild variant="outline" className="rounded-full text-[11px] uppercase tracking-wider font-semibold px-6 border-rose-600/40 text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30">
+                  <Link to={`/ler/${book.id}?mode=pdf`}>
+                    <FileText className="mr-1.5 h-3.5 w-3.5" />
+                    Ler em PDF
+                  </Link>
+                </Button>
+              )}
               <Button asChild variant="outline" className="rounded-full text-[11px] uppercase tracking-wider font-normal px-6">
                 <Link to={contentHref(book)}>
                   Ver capítulos
