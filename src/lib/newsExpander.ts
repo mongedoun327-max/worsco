@@ -15,6 +15,7 @@ export interface EnrichedNews {
   published: boolean;
   published_at: string;
   source_name: string;
+  source_url?: string;
   read_time: number;
   word_count: number;
   key_takeaways?: string[];
@@ -86,6 +87,7 @@ export function expandNewsToDeepReport(rawArticle: {
     published: true,
     published_at: rawArticle.published_at || new Date().toISOString(),
     source_name: sourceName,
+    source_url: (rawArticle as any).source_url,
     read_time: readTime,
     word_count: wordCount,
   };

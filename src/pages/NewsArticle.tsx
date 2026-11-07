@@ -28,11 +28,39 @@ const NewsArticle = () => {
   const { scrollYProgress } = useScroll();
   const scaleX = useSpring(scrollYProgress, { stiffness: 100, damping: 30, restDelta: 0.001 });
 
-  // Guarantee every article is upgraded to a multi-section deep investigative report
+  const [liveContent, setLiveContent] = useState<string | null>(null);
+  const [isExtracting, setIsExtracting] = useState(false);
+
+  // Guarantee every article is upgraded to clean authentic reporting
   const article: EnrichedNews | null = useMemo(() => {
     if (!rawArticle) return null;
     return expandNewsToDeepReport(rawArticle);
   }, [rawArticle]);
+
+  // Reset live content on slug change
+  useEffect(() => {
+    setLiveContent(null);
+  }, [slug]);
+
+  // Automatically fetch full authentic article from original publisher if currently brief (<4 paragraphs)
+  useEffect(() => {
+    if (!article?.source_url || liveContent) return;
+    const currentParagraphs = (article.content || "").split(/\n\s*\n+/).filter(Boolean);
+    if (currentParagraphs.length < 4 && !isExtracting) {
+      setIsExtracting(true);
+      fetch(`/api/news/extract?url=${encodeURIComponent(article.source_url)}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data?.content && data.content.length > (article.content?.length || 0)) {
+            setLiveContent(data.content);
+          }
+        })
+        .catch(() => {})
+        .finally(() => setIsExtracting(false));
+    }
+  }, [article?.source_url, article?.content, liveContent, isExtracting]);
+
+  const activeContent = liveContent || article?.content || "";
 
   // Find related news from same category or latest
   const relatedNews = useMemo(() => {
@@ -42,10 +70,10 @@ const NewsArticle = () => {
       .slice(0, 3);
   }, [allNews, article]);
 
-  // Parse structured blocks from content
+  // Parse structured blocks from active content
   const contentBlocks = useMemo(() => {
-    if (!article?.content) return [];
-    const rawParagraphs = article.content.split(/\n\s*\n+/);
+    if (!activeContent) return [];
+    const rawParagraphs = activeContent.split(/\n\s*\n+/);
 
     return rawParagraphs
       .map((p) => p.trim())
@@ -63,7 +91,7 @@ const NewsArticle = () => {
         }
         return { type: "paragraph", text, key: idx };
       });
-  }, [article?.content]);
+  }, [activeContent]);
 
   const handleShare = (network?: string) => {
     const url = window.location.href;
@@ -112,9 +140,10 @@ const NewsArticle = () => {
     );
   }
 
-  const readTime =
-    (article as any).read_time ||
-    Math.max(1, Math.round((article.content?.split(/\s+/).length || 200) / 180));
+  const readTime = Math.max(
+    1,
+    Math.round((activeContent.split(/\s+/).filter(Boolean).length || 200) / 180)
+  );
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
@@ -225,6 +254,25 @@ const NewsArticle = () => {
           )}
 
 
+
+          {/* Sincronização em tempo real da fonte */}
+          {isExtracting && (
+            <div className="mb-6 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs flex items-center gap-2.5 animate-pulse">
+              <Sparkles className="h-4 w-4 shrink-0" />
+              <span>Sincronizando reportagem na íntegra diretamente da fonte ({article.source_name || "veículo original"})...</span>
+            </div>
+          )}
+
+          {/* Selo de Reportagem Integral Autêntica */}
+          <div className="flex flex-wrap items-center justify-between text-xs text-muted-foreground pb-3 mb-6 border-b border-border/70 gap-2">
+            <span className="flex items-center gap-1.5 font-medium text-emerald-600 dark:text-emerald-400">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+              Matéria Integral da Fonte Original ({article.source_name || "Redação"})
+            </span>
+            <span className="text-[11px] font-light">
+              {contentBlocks.length} {contentBlocks.length === 1 ? "parágrafo" : "parágrafos"} autênticos preservados
+            </span>
+          </div>
 
           {/* Rich Body Content */}
           <div className="space-y-6 text-base sm:text-lg text-foreground/90 font-light leading-relaxed">

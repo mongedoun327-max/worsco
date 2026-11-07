@@ -327,9 +327,9 @@ function newsRssPlugin(): Plugin {
       .replace(/<p[^>]*>/gi, '\n\n')
       .replace(/<\/p>/gi, '')
       .replace(/<br\s*\/?>/gi, '\n')
-      .replace(/<h[1-6][^>]*>(.*?)<\/h[1-6]>/gi, '\n\n### $1\n\n')
-      .replace(/<li[^>]*>(.*?)<\/li>/gi, '\n• $1')
-      .replace(/<blockquote[^>]*>(.*?)<\/blockquote>/gis, '\n\n> "$1"\n\n')
+      .replace(/<h[1-6][^>]*>(.*?)<\/h[1-6]>/gi, '\n\n### \n\n')
+      .replace(/<li[^>]*>(.*?)<\/li>/gi, '\n• ')
+      .replace(/<blockquote[^>]*>(.*?)<\/blockquote>/gis, '\n\n> ""\n\n')
       .replace(/<[^>]+>/g, ' ');
 
     cleaned = cleaned
@@ -372,78 +372,106 @@ function newsRssPlugin(): Plugin {
         return true;
       });
 
-    // Journalism Expansion Engine: Transforms shallow 2-3 paragraph RSS feeds into rich investigative reports
-    let expandedSections: string[] = [];
-    const lead = paragraphs.slice(0, 2).join('\n\n') || (item.contentSnippet || item.title || '');
-
-    // Category-specific analytical framing
-    const catLower = (item._defaultCategory || 'Cultura').toLowerCase();
-    const titleLower = (item.title || '').toLowerCase();
-
-    // 1. Contextualização Histórica e Global
-    let historicalContext = '';
-    if (catLower.includes('anime') || catLower.includes('mang')) {
-      historicalContext = `A indústria contemporânea de animação e publicação japonesa atravessa uma das transformações econômicas mais profundas de sua história recente. O modelo tradicional de financiamento — historicamente centralizado em comitês de produção fechados (*Seisaku Iinkai*) e vendas físicas de volumes encadernados (*tankobon*) — vem sendo sistematicamente redesenhado pela demanda voraz de plataformas globais de streaming e licenciamento simultâneo (*simulcast*).\n\nNesse contexto, o anúncio envolvendo **"${item.title}"** não surge de forma isolada: ele reflete anos de maturação da franquia, oscilações na capacidade operacional dos estúdios japoneses e a necessidade de atingir públicos transnacionais que hoje respondem por mais de 50% da receita líquida do setor cultural oriental.`;
-    } else if (catLower.includes('webtoon')) {
-      historicalContext = `A ascensão vertiginosa dos Webtoons e Manhwas sul-coreanos estabeleceu um novo paradigma na economia de entretenimento digital. Liderado por conglomerados como Naver e Kakao, o formato vertical com rolagem infinita superou as barreiras territoriais e atraiu centenas de milhões de leitores ativos mensais.\n\nA movimentação em torno de **"${item.title}"** consolida um movimento estratégico em que propriedades intelectuais antes restritas ao ambiente mobile passam a ser alavancadas como âncoras para adaptações audiovisuais de grande escala, licenciamento de produtos e expansão para o mercado ocidental.`;
-    } else if (catLower.includes('tecnolog') || catLower.includes('game')) {
-      historicalContext = `No atual ciclo de aceleração tecnológica, os setores de software, computação de ponta e entretenimento interativo operam sob pressões inéditas de eficiência, retenção de usuários e monetização de ecossistemas fechados. Os antecedentes deste cenário remontam aos vultosos investimentos da última década em infraestrutura distribuída, chips especializados e modelos de inteligência de alta densidade.\n\nCompreender o impacto de **"${item.title}"** exige examinar como as gigantes de tecnologia e estúdios globais estão equilibrando a urgência por inovação contínua com a disciplina financeira exigida pelos investidores globais.`;
-    } else if (catLower.includes('livro')) {
-      historicalContext = `O mercado editorial e a circulação literária vivem um momento de redescoberta de formatos. Embora o livro físico mantenha sua solidez como objeto cultural de prestígio, a integração com comunidades digitais, clubes de leitura virtuais e a disponibilização em massa de obras de domínio público remodelaram a relação do leitor com os clássicos e com os lançamentos contemporâneos.\n\nO debate suscitado por **"${item.title}"** insere-se diretamente no esforço contínuo de democratização do acesso à leitura, sustentabilidade das casas editoriais e valorização autoral em tempos de excesso informacional.`;
-    } else if (catLower.includes('futebol')) {
-      historicalContext = `O futebol de elite mundial vive o auge de sua intensidade tática e econômica, polarizado nas cinco maiores ligas do planeta (Premier League inglesa, La Liga espanhola, Serie A italiana, Bundesliga alemã e Ligue 1 francesa), sob a regência máxima da UEFA Champions League. A disparidade de folhas salariais, o Fair Play Financeiro (FFP), os contratos bilionários de direitos audiovisuais e a modernização dos modelos de jogo impõem uma exigência extrema a elencos e comissões técnicas.\n\nNeste cenário de alcance planetário, **"${item.title}"** reverbera diretamente nos rumos das tabelas de classificação, na disputa pelas vagas europeias e na paixão global dos torcedores.`;
-    } else if (catLower.includes('basquete') || catLower.includes('nba')) {
-      historicalContext = `A National Basketball Association (NBA) é o epicentro do basquetebol mundial, onde o atleticismo de ponta se funde a um espetáculo midiático global. A era moderna da liga é caracterizada pelo ritmo ultra-acelerado (*pace*), proliferação de chutes do perímetro, disputas acirradas pelo troféu de MVP e a colisão de gerações entre lendas consagradas e os novos astros mundiais.\n\nPara além das estatísticas de box score, a liga é sacudida diariamente pelas tensões de vestiário, arbitragens controversas com relatórios L2M (*Last Two Minute Report*), decisões disciplinares rigorosas e o mercado frenético de trocas antes do fechamento da janela (*trade deadline*), onde um único movimento pode alterar a balança de poder rumo ao anel de campeão.`;
-    } else if (catLower.includes('mercado') || catLower.includes('econom')) {
-      historicalContext = `Os ciclos de política monetária, o comportamento das taxas de juros básicas e as pressões inflacionárias globais formam a moldura onde as decisões corporativas são tomadas. Fundos de investimento e empresas reavaliam custos de captação e planos de expansão a cada indicador financeiro.\n\nA movimentação em torno de **"${item.title}"** reflete a dinâmica dos mercados em antecipar cenários de liquidez, governança e valor de longo prazo.`;
-    } else if (catLower.includes('viral') || catLower.includes('trend')) {
-      historicalContext = `A cultura digital dos algoritmos de recomendação acelerada descentralizou a produção de narrativas de massa. Em plataformas orientadas a vídeo curto e áudio compartilhado, ideias e formatos conquistam alcance global em poucas horas.\n\nO desdobramento relatado em **"${item.title}"** evidencia o poder das comunidades virtuais e dos criadores em definir a linguagem e as atenções da sociedade conectada.`;
-    } else if (catLower.includes('lista') || catLower.includes('ranking')) {
-      historicalContext = `Em meio à sobrecarga de lançamentos e opções no ecossistema moderno, a curadoria criteriosa desempenha papel fundamental de discernimento. As melhores seleções analisam mérito técnico, originalidade e durabilidade cultural.\n\nA lista apresentada em **"${item.title}"** fornece um guia referencial e fundamentado para leitores e entusiastas que valorizam o mais alto padrão de qualidade.`;
-    } else if (catLower.includes('política') || catLower.includes('politica')) {
-      historicalContext = `O debate político e as decisões dos poderes constituídos estabelecem as balizas da convivência democrática e do desenvolvimento socioeconômico. A negociação entre instituições, a transparência pública e a participação civil são pilares contínuos de legitimidade.\n\nA pauta trazida por **"${item.title}"** insere-se em um debate vital sobre governança, responsabilidade fiscal e garantia de direitos coletivos.`;
-    } else if (catLower.includes('geografia') || catLower.includes('clima')) {
-      historicalContext = `A relação entre a atividade humana, a ocupação territorial e os equilíbrios ecológicos do planeta ganhou urgência inadiável no século XXI. Mapas, recursos hídricos e biomas constituem a base material que sustenta as sociedades.\n\nA investigação em **"${item.title}"** analisa como as transformações espaciais e climáticas impactam populações, economias e acordos internacionais.`;
-    } else if (catLower.includes('ciência') || catLower.includes('ciencia')) {
-      historicalContext = `A fronteira do conhecimento humano avança por meio da curiosidade disciplinada, experimentação metódica e revisão rigorosa por pares. Da exploração cósmica à biomedicina molecular, cada evidência confirmada abre horizontes inéditos de aplicação.\n\nO feito abordado em **"${item.title}"** simboliza o poder da cooperação científica em responder aos enigmas mais fascinantes da natureza.`;
-    } else {
-      historicalContext = `Os eventos noticiados em **"${item.title}"** conectam-se a tendências estruturais mais amplas que moldam a dinâmica social, econômica e cultural do momento. Longe de ser um acontecimento fortuito, o episódio é o desfecho de discussões acumuladas ao longo dos últimos meses entre agentes do setor, especialistas e o público consumidor.`;
-    }
-
-    // 2. Análise de Causa e Efeito
-    const causeAndEffect = `### Mecanismos de Causa e Efeito no Cenário Atual\n\nPara além do impacto imediato da manchete, analistas apontam que a gênese deste fato decorre de três vetores determinantes:\n\n• **Pressão de Demanda e Atenção:** A disputa feroz pela atenção do consumidor em ecossistemas digitais impõe que anúncios e novidades precisem de forte diferenciação narrativa e visual para furar a bolha dos algoritmos.\n• **Sustentabilidade Operacional e Custos:** Custos de produção elevados, prazos de entrega encurtados e gargalos logísticos forçam as organizações a recalcularem suas estratégias antes de confirmarem novas fases ou lançamentos.\n• **Alinhamento com Audiências Globais:** A repercussão deste movimento não se restringe a fronteiras locais; a sincronização entre lançamento no país de origem e disponibilidade imediata no Brasil tornou-se um requisito inegociável de relevância.`;
-
-    // 3. Múltiplos Ângulos e Perspectivas
-    const multiplePerspectives = `### Impacto Multissetorial: O Que Muda para o Consumidor e o Mercado\n\nAs implicações práticas deste desdobramento manifestam-se de formas distintas para cada elo da cadeia:\n\nPara o **leitor e consumidor final**, a decisão representa uma evolução positiva em termos de transparência e previsibilidade, ainda que levante questionamentos legítimos quanto a modelos de cobrança, calendários de estreia e fidelidade em relação ao material original.\n\nPor sua vez, para os **profissionais de bastidores e produtores**, o momento exige rigor na gestão de expectativas. Enquanto executivos celebram o potencial de engajamento, equipes criativas frequentemente relatam desafios intensos em conciliar padrões estéticos elevados com cronogramas exíguos de entrega.`;
-
-    // 4. Termos Técnicos e Explicações Didáticas
-    const technicalBreakdown = `### Conceitos-Chave e Vocabulário Especializado\n\nPara compreender a totalidade das nuances envolvidas, vale esclarecer conceitos fundamentais frequentemente citados nesta cobertura:\n\n• **Simulcast / Lançamento Global Sincronizado:** Prática de disponibilizar o conteúdo traduzido e legendado internacionalmente em poucas horas ou minutos após a exibição original, diminuindo drasticamente a pirataria e fortalecendo o consumo oficial.\n• **Janela de Exclusividade (Windowing):** Período no qual uma obra fica restrita a uma determinada plataforma antes de poder ser licenciada ou repassada a outros canais de distribuição.\n• **Engajamento Orgânico vs. Retenção Ativa:** Métrica que avalia não apenas quantas pessoas clicam inicialmente em uma notícia ou episódio, mas quantas permanecem consumindo o material até a última linha.`;
-
-    // 5. Conclusão e Desdobramentos Futuros
-    const futureOutlook = `### Desdobramentos Futuros e Perspectivas\n\nÀ medida que novas declarações oficiais forem divulgadas nas próximas semanas, o foco do mercado se voltará para a execução prática dos compromissos anunciados. A capacidade das partes envolvidas em sustentar o interesse do público e entregar qualidade técnica consistente será o divisor de águas entre um sucesso duradouro ou um pico efêmero de visibilidade.\n\nA redação Worscoi continuará acompanhando de perto cada atualização relevante sobre **"${item.title}"**, trazendo relatórios analíticos, checagem fidedigna e contextualização crítica aos nossos leitores.`;
-
-    // Assemble rich investigative piece
-    const fullArticleContent = [
-      lead,
-      `### Contexto Histórico e Antecedentes da Indústria`,
-      historicalContext,
-      paragraphs.length > 2 ? paragraphs.slice(2).join('\n\n') : '',
-      causeAndEffect,
-      multiplePerspectives,
-      technicalBreakdown,
-      futureOutlook,
-    ]
-      .filter(Boolean)
-      .join('\n\n');
-
+    const content = paragraphs.join('\n\n');
     const excerpt = paragraphs[0]
       ? paragraphs[0].slice(0, 220) + (paragraphs[0].length > 220 ? '...' : '')
       : (item.contentSnippet || item.title || '').slice(0, 200);
 
-    const wordCount = fullArticleContent.split(/\s+/).length;
-    const readTime = Math.max(3, Math.round(wordCount / 180));
+    const wordCount = content.split(/\s+/).filter(Boolean).length;
+    const readTime = Math.max(1, Math.round(wordCount / 180));
 
-    return { content: fullArticleContent, excerpt, readTime };
+    return { content, excerpt, readTime };
+  }
+
+  async function extractFullArticleFromWeb(url: string): Promise<{ content?: string; coverUrl?: string; readTime?: number } | null> {
+    if (!url || !url.startsWith('http')) return null;
+    if (url.includes('/jogo/') || url.includes('news.google.com')) return null;
+
+    try {
+      const res = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8',
+        },
+        signal: AbortSignal.timeout(6000),
+      });
+      if (!res.ok) return null;
+      const html = await res.text();
+
+      // 1. High-res cover image from page meta
+      const ogImg = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i) ||
+                    html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
+      const coverUrl = ogImg ? ogImg[1] : undefined;
+
+      // 2. Extract paragraphs from main article containers
+      let paras: string[] = [];
+
+      if (url.includes('globo.com')) {
+        const pMatches = [...html.matchAll(/<p[^>]*class=["'][^"']*content-text__container[^"']*["'][^>]*>([\s\S]*?)<\/p>/gi)];
+        paras = pMatches.map((m) => m[1]);
+      }
+
+      if (paras.length === 0) {
+        // Look for common CMS article body containers
+        const containerMatch = html.match(/<(?:article|div|section)[^>]*class=["'][^"']*(?:entry-content|article-body|post-content|article__content|article-text|c-news__body|story-body|noticia__conteudo|materia-conteudo|corpo-texto|content-area)[^"']*["'][\s\S]*?<\/(?:article|div|section)>/i);
+        const scope = containerMatch ? containerMatch[0] : html;
+        const pMatches = [...scope.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)];
+        paras = pMatches.map((m) => m[1]);
+      }
+
+      if (paras.length < 3) {
+        const cleanHtml = html
+          .replace(/<header[\s\S]*?<\/header>/gi, '')
+          .replace(/<footer[\s\S]*?<\/footer>/gi, '')
+          .replace(/<nav[\s\S]*?<\/nav>/gi, '')
+          .replace(/<aside[\s\S]*?<\/aside>/gi, '');
+        const pMatches = [...cleanHtml.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)];
+        paras = pMatches.map((m) => m[1]);
+      }
+
+      const cleanParas = paras
+        .map((p) =>
+          p
+            .replace(/<script[\s\S]*?<\/script>/gi, '')
+            .replace(/<style[\s\S]*?<\/style>/gi, '')
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/&nbsp;/g, ' ')
+            .replace(/&amp;/g, '&')
+            .replace(/&quot;/g, '"')
+            .replace(/&#8217;/g, "'")
+            .replace(/&#8216;/g, "'")
+            .replace(/&#8220;/g, '“')
+            .replace(/&#8221;/g, '”')
+            .replace(/&#8211;/g, '–')
+            .replace(/&#8212;/g, '—')
+            .replace(/&ccedil;/g, 'ç')
+            .replace(/&atilde;/g, 'ã')
+            .replace(/&eacute;/g, 'é')
+            .replace(/&oacute;/g, 'ó')
+            .replace(/&uacute;/g, 'ú')
+            .replace(/&aacute;/g, 'á')
+            .replace(/&ecirc;/g, 'ê')
+            .replace(/\s+/g, ' ')
+            .trim()
+        )
+        .filter((p) => {
+          if (p.length < 35) return false;
+          if (/^(critical hits|the post|o post|fonte:|saiba mais|confira também|leia também|assine|compartilhe|inscreva-se|veja mais|siga o canal|clique aqui|adicionar ch|achados\s*promo)/i.test(p))
+            return false;
+          if (/apareceu primeiro em|todos os direitos reservados|política de privacidade|termos de uso|adicionar ch no google|receba as melhores ofertas|fale com a gente/i.test(p))
+            return false;
+          return true;
+        });
+
+      if (cleanParas.length >= 2) {
+        const fullText = cleanParas.join('\n\n');
+        const wordCount = fullText.split(/\s+/).filter(Boolean).length;
+        const readTime = Math.max(1, Math.round(wordCount / 180));
+        return { content: fullText, coverUrl, readTime };
+      }
+    } catch {}
+    return null;
   }
 
   const newsArchiveFilePath = path.resolve(__dirname, './src/data/newsArchive.json');
@@ -734,9 +762,23 @@ function newsRssPlugin(): Plugin {
           }
 
           const archive = readNewsArchive();
-          const found = archive.find((a: any) => a.slug === slug || a.id === slug);
+          let found = archive.find((a: any) => a.slug === slug || a.id === slug);
 
           if (found) {
+            // If article is short (less than 4 paragraphs) and has a source_url, fetch the full authentic text from the publisher!
+            const parasCount = (found.content || '').split(/\n\s*\n+/).filter(Boolean).length;
+            if (found.source_url && parasCount < 4) {
+              const liveData = await extractFullArticleFromWeb(found.source_url);
+              if (liveData?.content) {
+                found.content = liveData.content;
+                if (liveData.coverUrl && !found.cover_url?.includes('glbimg.com')) {
+                  found.cover_url = liveData.coverUrl;
+                }
+                if (liveData.readTime) found.read_time = liveData.readTime;
+                writeNewsArchive(archive);
+              }
+            }
+
             res.statusCode = 200;
             res.setHeader('Content-Type', 'application/json');
             res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
@@ -747,6 +789,27 @@ function newsRssPlugin(): Plugin {
           res.statusCode = 404;
           res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify({ error: 'Artigo não encontrado no arquivo histórico', article: null }));
+        } catch (err: any) {
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ error: err.message }));
+        }
+      });
+
+      // 2.1 Live Full-Article Web Extraction Endpoint
+      server.middlewares.use('/api/news/extract', async (req, res) => {
+        try {
+          const urlObj = new URL(req.url || '', `http://${req.headers.host || 'localhost:3000'}`);
+          const targetUrl = urlObj.searchParams.get('url') || '';
+          if (!targetUrl) {
+            res.statusCode = 400;
+            res.end(JSON.stringify({ error: 'Parâmetro url é obrigatório' }));
+            return;
+          }
+          const extracted = await extractFullArticleFromWeb(targetUrl);
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify(extracted || { error: 'Não foi possível extrair a matéria completa da fonte' }));
         } catch (err: any) {
           res.statusCode = 500;
           res.setHeader('Content-Type', 'application/json');
@@ -2196,6 +2259,7 @@ export default defineConfig(() => {
     server: {
       host: '0.0.0.0',
       port: 3000,
+      strictPort: true,
       cors: true,
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       // Do not modify—file watching is disabled to prevent flickering during agent edits.
