@@ -124,11 +124,11 @@ const ContentDetail = () => {
               ))}
             </div>
 
-            {item.tags.length > 0 && (
+            {item.tags && item.tags.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
-                {item.tags.map((tag) => (
+                {Array.from(new Set(item.tags)).map((tag, idx) => (
                   <span
-                    key={tag}
+                    key={`${tag}-${idx}`}
                     className="text-[10px] uppercase tracking-wide px-2 py-1 bg-accent text-accent-foreground rounded-sm font-light"
                   >
                     {tag}

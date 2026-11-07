@@ -24,6 +24,8 @@ import {
 import {
   fetchMangaDexChapters,
   fetchMangaDexChapterPages,
+  fetchAnimeMangaChapters,
+  fetchAnimeMangaPages,
   MangaDexChapter,
 } from "@/lib/mangadex";
 import { useContentProtection } from "@/hooks/useContentProtection";
@@ -36,8 +38,9 @@ interface UnifiedChapter {
   title: string;
   pagesCount: number;
   pages?: string[];
+  chapterUrl?: string;
   mangadexChapterId?: string;
-  source: "local" | "mangadex";
+  source: "local" | "manga" | "webtoon" | "mangadex";
   language?: string;
   group?: string;
 }
@@ -51,7 +54,7 @@ export const AnimeMangaReader = () => {
     return ANIMES_DATA.find((a) => a.id === id || a.slug === id);
   }, [id]);
 
-  // Online MangaDex chapters loaded dynamically
+  // Online manga chapters loaded dynamically
   const [onlineChapters, setOnlineChapters] = useState<MangaDexChapter[]>([]);
   const [isFetchingChapterList, setIsFetchingChapterList] = useState(false);
 
@@ -66,16 +69,22 @@ export const AnimeMangaReader = () => {
 
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Fetch full chapter list from MangaDex & Tomato if available
+  // Fetch full chapter list from multi-source manga engine
   useEffect(() => {
-    if (!anime?.manga?.mangadexId) return;
+    if (!anime) return;
     let isMounted = true;
     setIsFetchingChapterList(true);
 
-    fetchMangaDexChapters(anime.manga.mangadexId, "all")
+    fetchAnimeMangaChapters(anime.id)
       .then((list) => {
         if (!isMounted) return;
-        setOnlineChapters(list);
+        if (list.length > 0) {
+          setOnlineChapters(list);
+        } else if (anime.manga?.mangadexId) {
+          fetchMangaDexChapters(anime.manga.mangadexId, "all").then((fallbackList) => {
+            if (isMounted) setOnlineChapters(fallbackList);
+          }).catch(() => {});
+        }
       })
       .catch((err) => {
         console.warn("Could not load online chapter list:", err);
@@ -87,12 +96,12 @@ export const AnimeMangaReader = () => {
     return () => {
       isMounted = false;
     };
-  }, [anime?.manga?.mangadexId]);
+  }, [anime]);
 
-  // Unified list of chapters combining pre-seeded local and MangaDex chapters
+  // Unified list of chapters combining pre-seeded local and online chapters
   const allChapters: UnifiedChapter[] = useMemo(() => {
     const list: UnifiedChapter[] = [];
-    const seenIds = new Set<string>();
+    const seenNumbers = new Set<number>();
 
     // 1. Add local chapters first if present
     if (anime?.manga?.chapters) {
@@ -104,30 +113,31 @@ export const AnimeMangaReader = () => {
           title: ch.title,
           pagesCount: ch.pagesCount,
           pages: ch.pages,
+          chapterUrl: (ch as any).chapterUrl,
           mangadexChapterId: ch.mangadexChapterId,
-          source: ch.pages && ch.pages.length > 0 ? "local" : "mangadex",
+          source: ch.pages && ch.pages.length > 0 ? "local" : "manga",
           language: "PT-BR",
         });
-        seenIds.add(ch.id);
-        if (ch.mangadexChapterId) seenIds.add(ch.mangadexChapterId);
+        seenNumbers.add(ch.number);
       }
     }
 
-    // 2. Add online MangaDex chapters
+    // 2. Add online chapters
     for (const och of onlineChapters) {
-      if (!seenIds.has(och.id)) {
+      if (!seenNumbers.has(och.numericNumber)) {
         list.push({
           id: och.id,
           number: och.number,
           numericNumber: och.numericNumber,
           title: och.title,
           pagesCount: och.pagesCount,
+          chapterUrl: och.chapterUrl,
           mangadexChapterId: och.id,
-          source: "mangadex",
+          source: och.chapterUrl ? "manga" : "mangadex",
           language: och.translatedLanguage.toUpperCase(),
           group: och.scanlationGroup,
         });
-        seenIds.add(och.id);
+        seenNumbers.add(och.numericNumber);
       }
     }
 
@@ -138,7 +148,6 @@ export const AnimeMangaReader = () => {
   // Current active chapter
   const currentChapter: UnifiedChapter | undefined = useMemo(() => {
     if (!allChapters.length) {
-      // Temporary fallback if initial chapters are still parsing
       const fallbackLocal = anime?.manga?.chapters?.[0];
       if (fallbackLocal) {
         return {
@@ -148,8 +157,9 @@ export const AnimeMangaReader = () => {
           title: fallbackLocal.title,
           pagesCount: fallbackLocal.pagesCount,
           pages: fallbackLocal.pages,
+          chapterUrl: (fallbackLocal as any).chapterUrl,
           mangadexChapterId: fallbackLocal.mangadexChapterId,
-          source: fallbackLocal.pages && fallbackLocal.pages.length > 0 ? "local" : "mangadex",
+          source: fallbackLocal.pages && fallbackLocal.pages.length > 0 ? "local" : "manga",
         };
       }
       return undefined;
@@ -161,6 +171,7 @@ export const AnimeMangaReader = () => {
           (c) =>
             c.id === chapterId ||
             String(c.number) === chapterId ||
+            c.chapterUrl === chapterId ||
             c.mangadexChapterId === chapterId
         ) || allChapters[0]
       );
@@ -179,7 +190,7 @@ export const AnimeMangaReader = () => {
 
   // Resolve pages for the active chapter
   useEffect(() => {
-    if (!currentChapter) return;
+    if (!anime || !currentChapter) return;
     let isMounted = true;
     setIsLoadingPages(true);
     setPageError(null);
@@ -192,9 +203,9 @@ export const AnimeMangaReader = () => {
       return;
     }
 
-    // Case 2: Fetch pages from MangaDex / Tomato at-home server with resilient fallback
-    const targetChapterId = currentChapter.mangadexChapterId || currentChapter.id;
-    fetchMangaDexChapterPages(targetChapterId, imageQuality)
+    // Case 2: Fetch pages with multi-source fallback
+    const targetIdentifier = currentChapter.chapterUrl || currentChapter.mangadexChapterId || currentChapter.id;
+    fetchAnimeMangaPages(anime.id, targetIdentifier, currentChapter.numericNumber)
       .then((res) => {
         if (!isMounted) return;
         if (!res.pages || res.pages.length === 0) {
@@ -202,11 +213,25 @@ export const AnimeMangaReader = () => {
         }
         setResolvedPages(res.pages);
       })
-      .catch(() => {
+      .catch((err) => {
         if (!isMounted) return;
-        // Strict Authenticity: Never generate synthetic cartoons or fake dialogues
-        setResolvedPages([]);
-        setPageError(null);
+        console.warn("Primary manga pages fetch failed, trying fallback:", err);
+        // Fallback to legacy MangaDex helper
+        fetchMangaDexChapterPages(currentChapter.mangadexChapterId || currentChapter.id, imageQuality)
+          .then((fallbackRes) => {
+            if (!isMounted) return;
+            if (fallbackRes.pages && fallbackRes.pages.length > 0) {
+              setResolvedPages(fallbackRes.pages);
+            } else {
+              setResolvedPages([]);
+              setPageError("Não foi possível carregar as páginas deste capítulo no momento.");
+            }
+          })
+          .catch(() => {
+            if (!isMounted) return;
+            setResolvedPages([]);
+            setPageError("Não foi possível carregar as páginas deste capítulo no momento.");
+          });
       })
       .finally(() => {
         if (isMounted) setIsLoadingPages(false);
@@ -215,7 +240,7 @@ export const AnimeMangaReader = () => {
     return () => {
       isMounted = false;
     };
-  }, [currentChapter, imageQuality]);
+  }, [anime, currentChapter, imageQuality]);
 
   // Load saved progress
   useEffect(() => {
@@ -304,7 +329,7 @@ export const AnimeMangaReader = () => {
                 </span>
                 <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-medium hidden sm:inline-flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  MangaDex & Tomato
+                  Servidor HD Multi-Fontes
                 </span>
                 <span className="text-xs text-white/50 truncate font-light hidden md:inline">
                   {anime.title}
@@ -539,13 +564,13 @@ export const AnimeMangaReader = () => {
                 <img
                   src={pageUrl}
                   alt={`Página ${idx + 1} de ${currentChapter?.title || 'Mangá'}`}
-                  className="w-full h-auto object-contain block select-none"
-                  loading="lazy"
+                  className="w-full h-auto object-contain block select-none bg-zinc-950"
+                  loading={idx < 3 ? "eager" : "lazy"}
                   onError={(e) => {
                     const target = e.currentTarget;
-                    if (!target.dataset.retried && pageUrl.startsWith("http") && !pageUrl.includes("/api/proxy/")) {
+                    if (!target.dataset.retried && !pageUrl.includes("/api/proxy/")) {
                       target.dataset.retried = "true";
-                      target.src = `/api/proxy/webtoon-image?url=${encodeURIComponent(pageUrl)}`;
+                      target.src = `/api/proxy/manga-image?url=${encodeURIComponent(pageUrl)}`;
                     }
                   }}
                 />
@@ -562,7 +587,15 @@ export const AnimeMangaReader = () => {
               <img
                 src={resolvedPages[currentPageIndex]}
                 alt={`Página ${currentPageIndex + 1}`}
-                className="w-full h-full object-contain select-none cursor-pointer"
+                className="w-full h-full object-contain select-none cursor-pointer bg-zinc-950"
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  const currentSrc = resolvedPages[currentPageIndex];
+                  if (!target.dataset.retried && currentSrc && !currentSrc.includes("/api/proxy/")) {
+                    target.dataset.retried = "true";
+                    target.src = `/api/proxy/manga-image?url=${encodeURIComponent(currentSrc)}`;
+                  }
+                }}
                 onClick={() => {
                   if (currentPageIndex < resolvedPages.length - 1) {
                     setCurrentPageIndex((p) => p + 1);

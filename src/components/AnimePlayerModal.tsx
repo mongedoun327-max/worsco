@@ -18,11 +18,13 @@ export const AnimePlayerModal = ({ anime, isOpen, onClose }: AnimePlayerModalPro
         {/* Video Player Header / Embed */}
         <div className="relative aspect-video w-full bg-black">
           <iframe
-            src={`https://www.youtube-nocookie.com/embed/${anime.trailerYoutubeId}?autoplay=1&rel=0`}
+            src={`https://www.youtube-nocookie.com/embed/${anime.trailerYoutubeId}?autoplay=1&rel=0&modestbranding=1&playsinline=1`}
             title={`Trailer de ${anime.title}`}
+            sandbox="allow-scripts allow-same-origin allow-presentation allow-encrypted-media"
+            referrerPolicy="no-referrer"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowFullScreen
-            className="w-full h-full border-0"
+            className="w-full h-full border-0 select-none"
           />
         </div>
 

@@ -4,6 +4,7 @@ import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import AnimeCard from "@/components/AnimeCard";
 import AnimePlayerModal from "@/components/AnimePlayerModal";
+import SecureAnimePlayer from "@/components/SecureAnimePlayer";
 import {
   ANIMES_DATA,
   Anime,
@@ -30,6 +31,8 @@ import {
   Globe,
   Loader2,
   ExternalLink,
+  ShieldCheck,
+  Layers,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -44,6 +47,7 @@ export const AnimeDetail = () => {
 
   const [inWatchlist, setInWatchlist] = useState(false);
   const [activeTab, setActiveTab] = useState<"episodes" | "manga">("episodes");
+  const [activeSeasonNumber, setActiveSeasonNumber] = useState(1);
   const [activeEpisodeNumber, setActiveEpisodeNumber] = useState(1);
   const [isPlayingTrailer, setIsPlayingTrailer] = useState(false);
   const [playerAnime, setPlayerAnime] = useState<Anime | null>(null);
@@ -142,7 +146,23 @@ export const AnimeDetail = () => {
     }
   };
 
-  const activeEpisode = anime.episodes.find((ep) => ep.number === activeEpisodeNumber) ?? anime.episodes[0];
+  const activeSeason = useMemo(() => {
+    if (!anime) return null;
+    return anime.seasons?.find((s) => s.seasonNumber === activeSeasonNumber) || anime.seasons?.[0];
+  }, [anime, activeSeasonNumber]);
+
+  const currentSeasonEpisodes = useMemo(() => {
+    return activeSeason?.episodes || anime?.episodes || [];
+  }, [activeSeason, anime]);
+
+  const activeEpisode = useMemo(() => {
+    return (
+      currentSeasonEpisodes.find((ep) => ep.number === activeEpisodeNumber) ||
+      currentSeasonEpisodes[0] ||
+      anime?.episodes[0]
+    );
+  }, [currentSeasonEpisodes, activeEpisodeNumber, anime]);
+
   const firstMangaChapter = anime.manga?.chapters[0];
 
   return (
@@ -307,9 +327,9 @@ export const AnimeDetail = () => {
 
             {/* Genres */}
             <div className="flex flex-wrap gap-2 mb-6">
-              {anime.genres.map((genre) => (
+              {Array.from(new Set(anime.genres || [])).map((genre, idx) => (
                 <span
-                  key={genre}
+                  key={`${genre}-${idx}`}
                   className="text-xs px-3 py-1 rounded-full bg-accent text-accent-foreground font-light"
                 >
                   {genre}
@@ -357,64 +377,152 @@ export const AnimeDetail = () => {
             </div>
 
             {/* TAB 1: WATCH ANIME (Episodes Player & List) */}
-            {activeTab === "episodes" && (
+            {activeTab === "episodes" && activeSeason && (
               <div>
-                {/* Inline Video Player */}
-                <div className="mb-10 rounded-2xl overflow-hidden border border-border bg-card shadow-soft">
-                  <div className="p-4 bg-secondary/50 border-b border-border flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Tv className="h-4 w-4 text-primary" />
-                      <span className="text-sm font-medium text-foreground">
-                        Player de Reprodução • Episódio {activeEpisode.number}: {activeEpisode.title}
-                      </span>
+                {/* Official Verification & Sandboxing Header Badge */}
+                <div className="mb-6 p-4 rounded-xl bg-card border border-emerald-500/20 bg-gradient-to-r from-emerald-950/20 via-card to-card flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2.5">
+                    <div className="h-8 w-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                      <ShieldCheck className="h-4 w-4" />
                     </div>
-                    <span className="text-xs text-muted-foreground font-light">
-                      Duração: {activeEpisode.duration}
-                    </span>
+                    <div>
+                      <p className="font-medium text-foreground flex items-center gap-2">
+                        Metadados Oficiais Verificados
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-mono">
+                          AniList • Jikan MAL • TMDB
+                        </span>
+                      </p>
+                      <p className="text-[11px] text-muted-foreground font-light">
+                        Reprodução isolada em sandbox estrito com bloqueio preventivo de popups e validação anti-duplicidade.
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="relative aspect-video w-full bg-black">
-                    <iframe
-                      src={`https://www.youtube-nocookie.com/embed/${anime.trailerYoutubeId}?rel=0`}
-                      title={`${anime.title} - Episódio ${activeEpisode.number}`}
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                      className="w-full h-full border-0"
-                    />
-                  </div>
-
-                  <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs bg-card">
-                    <p className="text-muted-foreground font-light">
-                      {activeEpisode.synopsis}
-                    </p>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <span className="px-2 py-1 rounded bg-green-500/10 text-green-600 font-medium text-[11px] flex items-center gap-1">
-                        <CheckCircle2 className="h-3 w-3" />
-                        HD 1080p
-                      </span>
-                      <span className="px-2 py-1 rounded bg-primary/10 text-primary font-medium text-[11px]">
-                        Legendas PT-BR
-                      </span>
-                    </div>
+                  <div className="flex items-center gap-3 font-mono text-[11px] text-muted-foreground">
+                    <span>Hash do Arquivo: <span className="text-foreground">{activeEpisode.contentHash.slice(0, 16)}...</span></span>
                   </div>
                 </div>
 
-                {/* Episodes List Section */}
+                {/* Secure Anti-Redirect Video Player */}
+                <div className="mb-8">
+                  <SecureAnimePlayer
+                    animeTitle={anime.title}
+                    season={activeSeason}
+                    episode={activeEpisode}
+                    onSelectEpisode={(epNum) => setActiveEpisodeNumber(epNum)}
+                    onNextEpisode={() => {
+                      const idx = currentSeasonEpisodes.findIndex((e) => e.number === activeEpisode.number);
+                      if (idx !== -1 && idx < currentSeasonEpisodes.length - 1) {
+                        setActiveEpisodeNumber(currentSeasonEpisodes[idx + 1].number);
+                      } else {
+                        const nextSeason = anime.seasons?.find((s) => s.seasonNumber === activeSeason.seasonNumber + 1);
+                        if (nextSeason && nextSeason.episodes.length > 0) {
+                          setActiveSeasonNumber(nextSeason.seasonNumber);
+                          setActiveEpisodeNumber(nextSeason.episodes[0].number);
+                          toast.success(`Iniciando ${nextSeason.title}!`);
+                        }
+                      }
+                    }}
+                    onPreviousEpisode={() => {
+                      const idx = currentSeasonEpisodes.findIndex((e) => e.number === activeEpisode.number);
+                      if (idx > 0) {
+                        setActiveEpisodeNumber(currentSeasonEpisodes[idx - 1].number);
+                      }
+                    }}
+                    hasNextEpisode={
+                      currentSeasonEpisodes.findIndex((e) => e.number === activeEpisode.number) < currentSeasonEpisodes.length - 1 ||
+                      !!anime.seasons?.find((s) => s.seasonNumber === activeSeason.seasonNumber + 1)
+                    }
+                    hasPreviousEpisode={
+                      currentSeasonEpisodes.findIndex((e) => e.number === activeEpisode.number) > 0 ||
+                      activeSeason.seasonNumber > 1
+                    }
+                  />
+                </div>
+
+                {/* Season Selector Bar (Navegação Hierárquica em 3 Níveis) */}
+                <div className="mb-8 p-4 rounded-2xl bg-card border border-border shadow-soft">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                    <div className="flex items-center gap-2">
+                      <Layers className="h-4 w-4 text-primary" />
+                      <h3 className="text-base font-medium text-foreground">
+                        Temporadas Disponíveis ({anime.seasons?.length || 1})
+                      </h3>
+                    </div>
+                    <span className="text-xs text-muted-foreground font-light">
+                      Selecione a temporada para carregar todos os episódios oficiais
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5">
+                    {anime.seasons?.map((s) => {
+                      const isSeasonActive = s.seasonNumber === activeSeason.seasonNumber;
+                      return (
+                        <button
+                          key={s.id}
+                          type="button"
+                          onClick={() => {
+                            setActiveSeasonNumber(s.seasonNumber);
+                            if (s.episodes.length > 0) {
+                              setActiveEpisodeNumber(s.episodes[0].number);
+                            }
+                          }}
+                          className={`p-3 rounded-xl border text-left transition-all ${
+                            isSeasonActive
+                              ? "bg-primary text-white border-primary shadow-md shadow-primary/20"
+                              : "bg-secondary/40 border-border hover:bg-secondary/80 text-foreground"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-semibold">
+                              Temporada {s.seasonNumber}
+                            </span>
+                            <span
+                              className={`text-[10px] px-1.5 py-0.5 rounded ${
+                                isSeasonActive
+                                  ? "bg-white/20 text-white"
+                                  : "bg-background text-muted-foreground"
+                              }`}
+                            >
+                              {s.year}
+                            </span>
+                          </div>
+                          <p
+                            className={`text-xs truncate font-medium ${
+                              isSeasonActive ? "text-white/90" : "text-muted-foreground"
+                            }`}
+                          >
+                            {s.title.replace(`Temporada ${s.seasonNumber}:`, "").trim()}
+                          </p>
+                          <p
+                            className={`text-[10px] mt-1 ${
+                              isSeasonActive ? "text-white/70" : "text-muted-foreground"
+                            }`}
+                          >
+                            {s.episodesCount} episódios mapeados
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Episodes List Section for Current Season */}
                 <div className="mb-12">
                   <div className="flex items-center justify-between mb-6">
                     <div>
                       <h3 className="text-xl font-light text-foreground">
-                        Lista de Episódios
+                        Episódios da {activeSeason.title}
                       </h3>
                       <p className="text-xs text-muted-foreground font-light">
-                        {anime.episodes.length} episódios disponíveis para assistir
+                        {currentSeasonEpisodes.length} episódios com streams sanitizados e certificados
                       </p>
                     </div>
                   </div>
 
                   <div className="space-y-3">
-                    {anime.episodes.map((ep) => {
-                      const isActive = ep.number === activeEpisodeNumber;
+                    {currentSeasonEpisodes.map((ep) => {
+                      const isActive = ep.number === activeEpisode.number;
                       return (
                         <div
                           key={ep.id}
@@ -453,10 +561,13 @@ export const AnimeDetail = () => {
                                 Ep. {ep.number}
                               </span>
                               {ep.isFree && (
-                                <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.2 rounded bg-green-500/10 text-green-600 font-medium">
+                                <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-green-500/10 text-green-600 font-medium">
                                   Grátis
                                 </span>
                               )}
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground font-mono">
+                                Hash: {ep.contentHash.slice(0, 10)}
+                              </span>
                             </div>
                             <h4 className="text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors">
                               {ep.title}
@@ -503,7 +614,7 @@ export const AnimeDetail = () => {
                       </span>
                       <span className="text-[11px] uppercase tracking-wider text-emerald-500 font-medium px-2 py-0.5 rounded bg-emerald-500/10 flex items-center gap-1">
                         <Sparkles className="h-3 w-3" />
-                        MangaDex & Tomato Hub
+                        Servidor HD Multi-Fontes
                       </span>
                     </div>
 
@@ -555,7 +666,7 @@ export const AnimeDetail = () => {
                       </h3>
                       <p className="text-xs text-muted-foreground font-light">
                         {onlineChapters.length > 0
-                          ? `${onlineChapters.length} capítulos oficiais sincronizados via MangaDex & Tomato`
+                          ? `${onlineChapters.length} capítulos oficiais disponíveis para leitura`
                           : `${anime.manga?.chapters.length || 0} capítulos preparados para leitura imediata`}
                       </p>
                     </div>

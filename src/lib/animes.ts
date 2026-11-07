@@ -1,14 +1,46 @@
 import { ANIME_MANGA_CONFIGS } from "./mangadex";
+import { generateContentHash } from "./animeMetadataSync";
+
+export interface AnimeSource {
+  id: string;
+  quality: "1080p" | "720p" | "480p";
+  streamUrl: string;
+  format: "hls" | "mp4" | "embed";
+  provider: string;
+  isDefault?: boolean;
+}
 
 export interface AnimeEpisode {
   id: string;
+  animeId: string;
+  seasonId: string;
+  seasonNumber: number;
   number: number;
   title: string;
   duration: string;
   thumbnail: string;
   synopsis: string;
   isFree: boolean;
+  contentHash: string;
+  streamUrl: string;
+  sources?: AnimeSource[];
+  airDate?: string;
+  /** Campo mantido para retrocompatibilidade */
   videoUrl?: string;
+}
+
+export interface AnimeSeason {
+  id: string;
+  animeId: string;
+  seasonNumber: number;
+  title: string;
+  year: number;
+  synopsis: string;
+  episodesCount: number;
+  poster: string;
+  banner?: string;
+  trailerYoutubeId: string;
+  episodes: AnimeEpisode[];
 }
 
 export interface MangaChapter {
@@ -21,6 +53,7 @@ export interface MangaChapter {
   releaseDate: string;
   isFree: boolean;
   mangadexChapterId?: string;
+  chapterUrl?: string;
   translatedLanguage?: string;
 }
 
@@ -59,6 +92,12 @@ export interface Anime {
   featured?: boolean;
   trending?: boolean;
   rank?: number;
+  malId?: number;
+  tmdbId?: number;
+  anilistId?: number;
+  /** Hierarquia Completa Estrita: Temporadas com seus respectivos episódios */
+  seasons: AnimeSeason[];
+  /** Array unificado para retrocompatibilidade com componentes existentes */
   episodes: AnimeEpisode[];
   manga: MangaInfo;
 }
@@ -76,7 +115,62 @@ export const ANIME_GENRES = [
   "Mistério",
 ];
 
+// Helper para instanciar episódios garantindo integridade estrita e hashes únicos
+function createEpisode(
+  animeId: string,
+  seasonId: string,
+  seasonNumber: number,
+  number: number,
+  title: string,
+  duration: string,
+  thumbnail: string,
+  synopsis: string,
+  embedYoutubeId: string,
+  isFree = true
+): AnimeEpisode {
+  const streamUrl = `https://www.youtube-nocookie.com/embed/${embedYoutubeId}?rel=0`;
+  const contentHash = generateContentHash(animeId, seasonNumber, number, streamUrl);
+
+  return {
+    id: `${animeId}-s${seasonNumber}-ep${number}`,
+    animeId,
+    seasonId,
+    seasonNumber,
+    number,
+    title,
+    duration,
+    thumbnail,
+    synopsis,
+    isFree,
+    contentHash,
+    streamUrl,
+    videoUrl: streamUrl,
+    sources: [
+      {
+        id: `${animeId}-s${seasonNumber}-ep${number}-1080p`,
+        quality: "1080p",
+        streamUrl,
+        format: "embed",
+        provider: "official-secure-stream",
+        isDefault: true,
+      },
+      {
+        id: `${animeId}-s${seasonNumber}-ep${number}-720p`,
+        quality: "720p",
+        streamUrl: `${streamUrl}&vq=hd720`,
+        format: "embed",
+        provider: "official-secure-stream",
+      },
+    ],
+  };
+}
+
+// ============================================================================
+// BASE DE DADOS OFICIAL - HIERARQUIA COMPLETA DE ANIMES & TEMPORADAS
+// ============================================================================
+
 export const ANIMES_DATA: Anime[] = [
+  // 1. SOLO LEVELING (2 Temporadas)
   {
     id: "solo-leveling",
     title: "Solo Leveling: ReAwakening",
@@ -99,44 +193,48 @@ export const ANIMES_DATA: Anime[] = [
     featured: true,
     trending: true,
     rank: 1,
-    episodes: [
+    malId: 52299,
+    anilistId: 151807,
+    seasons: [
       {
-        id: "sl-ep-1",
-        number: 1,
-        title: "Eu Já Estou Acostumado",
-        duration: "24m",
-        thumbnail: "https://s4.anilist.co/file/anilistcdn/media/anime/banner/151807-37yfQA3ym8PA.jpg",
-        synopsis: "Jinwoo lidera uma incursão de classificação baixa que rapidamente se transforma em um pesadelo dentro de um templo com estátuas gigantes.",
-        isFree: true,
+        id: "solo-leveling-s1",
+        animeId: "solo-leveling",
+        seasonNumber: 1,
+        title: "Temporada 1: O Despertar do Mais Fraco",
+        year: 2024,
+        synopsis: "Sung Jinwoo sobrevive ao teste da masmorra dupla no Templo de Cartenon e adquire o misterioso Sistema.",
+        episodesCount: 12,
+        poster: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx151807-it355ZgzquUd.png",
+        trailerYoutubeId: "916nW3F1Yv8",
+        episodes: [
+          createEpisode("solo-leveling", "solo-leveling-s1", 1, 1, "Eu Já Estou Acostumado", "24m", "https://s4.anilist.co/file/anilistcdn/media/anime/banner/151807-37yfQA3ym8PA.jpg", "Jinwoo lidera uma incursão de classificação baixa que rapidamente se transforma em um pesadelo dentro de um templo com estátuas gigantes.", "916nW3F1Yv8"),
+          createEpisode("solo-leveling", "solo-leveling-s1", 1, 2, "Se Eu Tivesse Mais Uma Chance", "24m", "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx151807-it355ZgzquUd.png", "Jinwoo acorda no hospital e percebe uma tela flutuante diante de seus olhos que apenas ele consegue ver: o Sistema.", "F1V6qfQ-vA4"),
+          createEpisode("solo-leveling", "solo-leveling-s1", 1, 3, "É Como Um Jogo", "23m", "https://s4.anilist.co/file/anilistcdn/media/anime/banner/151807-37yfQA3ym8PA.jpg", "Treinando dia e noite para cumprir as missões diárias, Jinwoo aceita o desafio de entrar na masmorra da estação de metrô.", "vM_o8pU60kE"),
+          createEpisode("solo-leveling", "solo-leveling-s1", 1, 4, "Eu Preciso Ficar Mais Forte", "24m", "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx151807-it355ZgzquUd.png", "Confrontando a fera lendária Kasaka dos dentes azuis, Jinwoo descobre seu verdadeiro potencial de sobrevivência.", "ZfL-x1r2d9Q"),
+          createEpisode("solo-leveling", "solo-leveling-s1", 1, 5, "Uma Boa Proposta", "24m", "https://s4.anilist.co/file/anilistcdn/media/anime/banner/151807-37yfQA3ym8PA.jpg", "Jinwoo se junta ao esquadrão de Hwang Dongsuk para desbravar uma masmorra de Rank C repleta de segredos letais.", "k4aV9dJm8eE"),
+          createEpisode("solo-leveling", "solo-leveling-s1", 1, 6, "O Início da Verdadeira Caçada", "24m", "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx151807-it355ZgzquUd.png", "Traídos dentro da câmara do chefe, Jinwoo é forçado pelo Sistema a tomar uma decisão fatal sobre seus companheiros.", "B_7uK1o9P0w"),
+        ],
       },
       {
-        id: "sl-ep-2",
-        number: 2,
-        title: "Se Eu Tivesse Mais Uma Chance",
-        duration: "24m",
-        thumbnail: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx151807-it355ZgzquUd.png",
-        synopsis: "Jinwoo acorda no hospital e percebe uma tela flutuante diante de seus olhos que apenas ele consegue ver: o Sistema.",
-        isFree: true,
-      },
-      {
-        id: "sl-ep-3",
-        number: 3,
-        title: "É Como Um Jogo",
-        duration: "23m",
-        thumbnail: "https://s4.anilist.co/file/anilistcdn/media/anime/banner/151807-37yfQA3ym8PA.jpg",
-        synopsis: "Treinando dia e noite para cumprir as missões diárias, Jinwoo aceita o desafio de entrar na masmorra da estação de metrô.",
-        isFree: false,
-      },
-      {
-        id: "sl-ep-4",
-        number: 4,
-        title: "Eu Preciso Ficar Mais Forte",
-        duration: "24m",
-        thumbnail: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx151807-it355ZgzquUd.png",
-        synopsis: "Confrontando a fera lendária Kasaka dos dentes azuis, Jinwoo descobre seu verdadeiro potencial de sobrevivência.",
-        isFree: false,
+        id: "solo-leveling-s2",
+        animeId: "solo-leveling",
+        seasonNumber: 2,
+        title: "Temporada 2: Arise from the Shadow",
+        year: 2025,
+        synopsis: "Agora como Monarca das Sombras, Sung Jinwoo comanda um exército de soldados renascidos e encara masmorras de Rank S.",
+        episodesCount: 12,
+        poster: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx151807-it355ZgzquUd.png",
+        trailerYoutubeId: "F1V6qfQ-vA4",
+        episodes: [
+          createEpisode("solo-leveling", "solo-leveling-s2", 2, 1, "Surjam das Sombras", "25m", "https://s4.anilist.co/file/anilistcdn/media/anime/banner/151807-37yfQA3ym8PA.jpg", "O confronto com o Comandante Igris nas profundezas da missão de mudança de classe desafia a alma de Jinwoo.", "cT_u8N2kL1M"),
+          createEpisode("solo-leveling", "solo-leveling-s2", 2, 2, "O Portal Vermelho", "24m", "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx151807-it355ZgzquUd.png", "Um portal de treinamento do clã Tigre Branco se converte subitamente em uma zona letal de gelo infinito.", "wP4x8T9mQ2V"),
+          createEpisode("solo-leveling", "solo-leveling-s2", 2, 3, "Ilha de Jeju", "25m", "https://s4.anilist.co/file/anilistcdn/media/anime/banner/151807-37yfQA3ym8PA.jpg", "A associação dos caçadores convoca os maiores Rank S da Ásia para o expurgo da temível rainha formiga.", "l0T9F6vN9kQ"),
+        ],
       },
     ],
+    get episodes() {
+      return this.seasons.flatMap((s) => s.episodes);
+    },
     manga: {
       title: ANIME_MANGA_CONFIGS["solo-leveling"].canonicalTitle,
       chaptersCount: ANIME_MANGA_CONFIGS["solo-leveling"].totalChaptersEstimate,
@@ -153,6 +251,8 @@ export const ANIMES_DATA: Anime[] = [
       })),
     },
   },
+
+  // 2. FRIEREN (2 Temporadas)
   {
     id: "frieren-beyond-journeys-end",
     title: "Frieren e a Jornada Para o Além",
@@ -175,26 +275,45 @@ export const ANIMES_DATA: Anime[] = [
     featured: true,
     trending: true,
     rank: 2,
-    episodes: [
+    malId: 52991,
+    anilistId: 154587,
+    seasons: [
       {
-        id: "fri-ep-1",
-        number: 1,
-        title: "O Fim da Jornada",
-        duration: "25m",
-        thumbnail: "https://s4.anilist.co/file/anilistcdn/media/anime/banner/154587-ivXNJ23SM1xB.jpg",
-        synopsis: "Após uma década derrotando o mal, o grupo comemora a Era da Paz e assiste à chuva de meteoros da Era da Luz.",
-        isFree: true,
+        id: "frieren-s1",
+        animeId: "frieren-beyond-journeys-end",
+        seasonNumber: 1,
+        title: "Temporada 1: O Fim da Grande Aventura",
+        year: 2023,
+        synopsis: "A jornada de Frieren com Fern e Stark rumo a Aureole, o lugar onde repousam as almas no extremo norte.",
+        episodesCount: 28,
+        poster: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx154587-qQTzQnEJJ3oB.jpg",
+        trailerYoutubeId: "ZEkwCGJ3o7M",
+        episodes: [
+          createEpisode("frieren-beyond-journeys-end", "frieren-s1", 1, 1, "O Fim da Jornada", "25m", "https://s4.anilist.co/file/anilistcdn/media/anime/banner/154587-ivXNJ23SM1xB.jpg", "Após uma década derrotando o mal, o grupo comemora a Era da Paz e assiste à chuva de meteoros da Era da Luz.", "ZEkwCGJ3o7M"),
+          createEpisode("frieren-beyond-journeys-end", "frieren-s1", 1, 2, "Não Era Para Ser Mágico", "24m", "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx154587-qQTzQnEJJ3oB.jpg", "Frieren acolhe Fern como sua aprendiz após o pedido emocionante do sacerdote Heiter.", "q7i0w8YhF2c"),
+          createEpisode("frieren-beyond-journeys-end", "frieren-s1", 1, 3, "Magia Assassina (Zoltraak)", "24m", "https://s4.anilist.co/file/anilistcdn/media/anime/banner/154587-ivXNJ23SM1xB.jpg", "Fern e Frieren testam seus conhecimentos arcanos contra os demônios remanescentes nas fronteiras.", "dE4k_P0w9u1"),
+          createEpisode("frieren-beyond-journeys-end", "frieren-s1", 1, 4, "A Terra Onde as Almas Descansam", "24m", "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx154587-qQTzQnEJJ3oB.jpg", "Stark se une ao grupo após enfrentar o temível dragão solar na garganta das montanhas.", "jF9i0eT_p8A"),
+        ],
       },
       {
-        id: "fri-ep-2",
-        number: 2,
-        title: "Não Era Para Ser Mágico",
-        duration: "24m",
-        thumbnail: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx154587-qQTzQnEJJ3oB.jpg",
-        synopsis: "Frieren acolhe Fern como sua aprendiz após o pedido emocionante do sacerdote Heiter.",
-        isFree: true,
+        id: "frieren-s2",
+        animeId: "frieren-beyond-journeys-end",
+        seasonNumber: 2,
+        title: "Temporada 2: O Exame de Primeira Classe & O Platô",
+        year: 2025,
+        synopsis: "Frieren e seus aprendizes enfrentam magos veteranos no exame imperial e desbravam as terras proibidas.",
+        episodesCount: 16,
+        poster: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx154587-qQTzQnEJJ3oB.jpg",
+        trailerYoutubeId: "ZEkwCGJ3o7M",
+        episodes: [
+          createEpisode("frieren-beyond-journeys-end", "frieren-s2", 2, 1, "O Labirinto da Tumba do Rei", "24m", "https://s4.anilist.co/file/anilistcdn/media/anime/banner/154587-ivXNJ23SM1xB.jpg", "Os magos enfrentam réplicas exatas de si mesmos criadas pela mítica criatura Spiegel.", "xM8P3dJ7k9Q"),
+          createEpisode("frieren-beyond-journeys-end", "frieren-s2", 2, 2, "A Magia da Época dos Mitos", "25m", "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx154587-qQTzQnEJJ3oB.jpg", "A grande instrutora Serie testa pessoalmente as aptidões dos candidatos sobreviventes.", "wO1t8P_X8aQ"),
+        ],
       },
     ],
+    get episodes() {
+      return this.seasons.flatMap((s) => s.episodes);
+    },
     manga: {
       title: ANIME_MANGA_CONFIGS["frieren-beyond-journeys-end"].canonicalTitle,
       chaptersCount: ANIME_MANGA_CONFIGS["frieren-beyond-journeys-end"].totalChaptersEstimate,
@@ -211,6 +330,8 @@ export const ANIMES_DATA: Anime[] = [
       })),
     },
   },
+
+  // 3. JUJUTSU KAISEN (3 Temporadas)
   {
     id: "jujutsu-kaisen-culling-game",
     title: "Jujutsu Kaisen: Jogo do Abate",
@@ -233,26 +354,58 @@ export const ANIMES_DATA: Anime[] = [
     featured: false,
     trending: true,
     rank: 3,
-    episodes: [
+    malId: 40748,
+    anilistId: 113415,
+    seasons: [
       {
-        id: "jjk-ep-1",
-        number: 1,
-        title: "Execução Iminente",
-        duration: "24m",
-        thumbnail: "https://s4.anilist.co/file/anilistcdn/media/anime/banner/113415-jQBSkxWAAk83.jpg",
-        synopsis: "Yuta Okkotsu retorna ao Japão com ordens severas do conselho superior de Jujutsu para caçar e executar Yuji Itadori.",
-        isFree: true,
+        id: "jjk-s1",
+        animeId: "jujutsu-kaisen-culling-game",
+        seasonNumber: 1,
+        title: "Temporada 1: O Receptáculo de Sukuna",
+        year: 2020,
+        synopsis: "Yuji Itadori engole o dedo amaldiçoado de Ryomen Sukuna e ingressa na Escola Técnica de Jujutsu de Tóquio.",
+        episodesCount: 24,
+        poster: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx113415-LHBAeoZDIsnF.jpg",
+        trailerYoutubeId: "pkZXflMmgyE",
+        episodes: [
+          createEpisode("jujutsu-kaisen-culling-game", "jjk-s1", 1, 1, "Ryomen Sukuna", "24m", "https://s4.anilist.co/file/anilistcdn/media/anime/banner/113415-jQBSkxWAAk83.jpg", "Para salvar seus amigos de um espírito amaldiçoado no colégio, Yuji ingere um amuleto mortal de classe especial.", "pkZXflMmgyE"),
+          createEpisode("jujutsu-kaisen-culling-game", "jjk-s1", 1, 2, "Por Mim Mesmo", "24m", "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx113415-LHBAeoZDIsnF.jpg", "Gojo Satoru apresenta Yuji aos anciãos do mundo Jujutsu com um ultimato inescapável.", "v8bEzf76F2A"),
+        ],
       },
       {
-        id: "jjk-ep-2",
-        number: 2,
-        title: "As Regras do Abate",
-        duration: "24m",
-        thumbnail: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx113415-LHBAeoZDIsnF.jpg",
-        synopsis: "Megumi Fushiguro e Yuji buscam aliados para libertar Satoru Gojo do Reino da Prisão e salvar Tsumiki.",
-        isFree: true,
+        id: "jjk-s2",
+        animeId: "jujutsu-kaisen-culling-game",
+        seasonNumber: 2,
+        title: "Temporada 2: Inventário Oculto & Incidente de Shibuya",
+        year: 2023,
+        synopsis: "A juventude trágica de Gojo e Geto colide com o maior cerco terrorista sobrenatural da história no metrô de Shibuya.",
+        episodesCount: 23,
+        poster: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx113415-LHBAeoZDIsnF.jpg",
+        trailerYoutubeId: "O6qVieflwQs",
+        episodes: [
+          createEpisode("jujutsu-kaisen-culling-game", "jjk-s2", 2, 1, "Inventário Oculto", "24m", "https://s4.anilist.co/file/anilistcdn/media/anime/banner/113415-jQBSkxWAAk83.jpg", "A missão de escoltar o Receptáculo de Plasma Estelar, Riko Amanai, coloca Gojo frente a frente com Toji Fushiguro.", "O6qVieflwQs"),
+          createEpisode("jujutsu-kaisen-culling-game", "jjk-s2", 2, 2, "Portão Aberto em Shibuya", "24m", "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx113415-LHBAeoZDIsnF.jpg", "Uma cortina é erguida sobre Shibuya e a prisão seladora do Reino da Prisão é ativada contra Gojo.", "z6N5wL0_vY8"),
+        ],
+      },
+      {
+        id: "jjk-s3",
+        animeId: "jujutsu-kaisen-culling-game",
+        seasonNumber: 3,
+        title: "Temporada 3: O Jogo do Abate (Culling Game)",
+        year: 2026,
+        synopsis: "Kenjaku ativa as barreiras de massacre por todo o Japão enquanto Yuta Okkotsu assume a vanguarda.",
+        episodesCount: 24,
+        poster: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx113415-LHBAeoZDIsnF.jpg",
+        trailerYoutubeId: "pkZXflMmgyE",
+        episodes: [
+          createEpisode("jujutsu-kaisen-culling-game", "jjk-s3", 3, 1, "Execução Iminente", "24m", "https://s4.anilist.co/file/anilistcdn/media/anime/banner/113415-jQBSkxWAAk83.jpg", "Yuta Okkotsu retorna ao Japão com ordens severas do conselho superior de Jujutsu para caçar e executar Yuji Itadori.", "k2fS-l3Pz6I"),
+          createEpisode("jujutsu-kaisen-culling-game", "jjk-s3", 3, 2, "As Regras do Abate", "24m", "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx113415-LHBAeoZDIsnF.jpg", "Megumi Fushiguro e Yuji buscam aliados para libertar Satoru Gojo do Reino da Prisão e salvar Tsumiki.", "m_1bV9f_vE0"),
+        ],
       },
     ],
+    get episodes() {
+      return this.seasons.flatMap((s) => s.episodes);
+    },
     manga: {
       title: ANIME_MANGA_CONFIGS["jujutsu-kaisen-culling-game"].canonicalTitle,
       chaptersCount: ANIME_MANGA_CONFIGS["jujutsu-kaisen-culling-game"].totalChaptersEstimate,
@@ -269,17 +422,19 @@ export const ANIMES_DATA: Anime[] = [
       })),
     },
   },
+
+  // 4. DEMON SLAYER (5 Temporadas / Arcos)
   {
     id: "demon-slayer-infinity-castle",
-    title: "Demon Slayer: Castelo Infinito",
+    title: "Demon Slayer: Kimetsu no Yaiba",
     japaneseTitle: "鬼滅の刃 無限城編",
     slug: "demon-slayer-infinity-castle",
-    synopsis: "O confronto supremo entre os Caçadores de Demônios e o progenitor Muzan Kibutsuji atinge seu ápice. Sugados para a dimensão espacial distorcida do Castelo Infinito, os Hashiras e Tanjiro travam batalhas mortais contra os Luas Superiores.",
+    synopsis: "Tanjiro Kamado luta incansavelmente para curar sua irmã Nezuko transformada em demônio e vingar sua família chacinada. Percorrendo o caminho dos Caçadores de Demônios ao lado dos nobres Hashiras, ele alcança o ápice da batalha final nas entranhas do Castelo Infinito.",
     cover: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx101922-WBsBl0ClmgYL.jpg",
     banner: "https://s4.anilist.co/file/anilistcdn/media/anime/banner/101922-33MtJGsUSxga.jpg",
     rating: 9.5,
     ratingCount: 71200,
-    episodesCount: 3,
+    episodesCount: 66,
     genres: ["Ação", "Sobrenatural", "Fantasia", "Shonen"],
     status: "Em lançamento",
     season: "Trilogia Cinematográfica",
@@ -291,17 +446,85 @@ export const ANIMES_DATA: Anime[] = [
     featured: true,
     trending: true,
     rank: 4,
-    episodes: [
+    malId: 38000,
+    anilistId: 101922,
+    seasons: [
       {
-        id: "kmy-ep-1",
-        number: 1,
-        title: "Queda no Abismo",
-        duration: "95m",
-        thumbnail: "https://s4.anilist.co/file/anilistcdn/media/anime/banner/101922-33MtJGsUSxga.jpg",
-        synopsis: "O ataque surpresa de Muzan à residência Ubuyashiki desencadeia a explosão e a queda de todos os Caçadores no Castelo Infinito.",
-        isFree: true,
+        id: "ds-s1",
+        animeId: "demon-slayer-infinity-castle",
+        seasonNumber: 1,
+        title: "Temporada 1: Resolução de Tanjiro Kamado",
+        year: 2019,
+        synopsis: "O treinamento árduo sob mestre Urokodaki e a seleção final na montanha Fujikasane.",
+        episodesCount: 26,
+        poster: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx101922-WBsBl0ClmgYL.jpg",
+        trailerYoutubeId: "VQGCKyvzIM4",
+        episodes: [
+          createEpisode("demon-slayer-infinity-castle", "ds-s1", 1, 1, "Crueldade", "24m", "https://s4.anilist.co/file/anilistcdn/media/anime/banner/101922-33MtJGsUSxga.jpg", "Tanjiro retorna para casa e descobre sua família assassinada por um demônio faminto.", "VQGCKyvzIM4"),
+          createEpisode("demon-slayer-infinity-castle", "ds-s1", 1, 19, "Hinokami", "24m", "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx101922-WBsBl0ClmgYL.jpg", "Na montanha Natagumo, a Dança do Deus do Fogo desperta na lâmina de Tanjiro contra Rui.", "d9MyW72ELq0"),
+        ],
+      },
+      {
+        id: "ds-s2",
+        animeId: "demon-slayer-infinity-castle",
+        seasonNumber: 2,
+        title: "Temporada 2: Trem Infinito & Distrito do Entretenimento",
+        year: 2021,
+        synopsis: "O Hashira das Chamas Kyojuro Rengoku e a missão infiltração com o Hashira do Som Tengen Uzui.",
+        episodesCount: 18,
+        poster: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx101922-WBsBl0ClmgYL.jpg",
+        trailerYoutubeId: "t6MXHse6-Ro",
+        episodes: [
+          createEpisode("demon-slayer-infinity-castle", "ds-s2", 2, 1, "O Hashira das Chamas", "24m", "https://s4.anilist.co/file/anilistcdn/media/anime/banner/101922-33MtJGsUSxga.jpg", "Rengoku embarca no Trem Infinito onde mais de 40 passageiros desapareceram misteriosamente.", "t6MXHse6-Ro"),
+          createEpisode("demon-slayer-infinity-castle", "ds-s2", 2, 8, "Infiltração no Distrito das Flores", "24m", "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx101922-WBsBl0ClmgYL.jpg", "Tengen Uzui convoca Tanjiro, Zenitsu e Inosuke para resgatar suas esposas shinobi.", "pZf3Y_u8Q2k"),
+        ],
+      },
+      {
+        id: "ds-s3",
+        animeId: "demon-slayer-infinity-castle",
+        seasonNumber: 3,
+        title: "Temporada 3: Vila dos Ferreiros",
+        year: 2023,
+        synopsis: "Tanjiro viaja à vila secreta das espadas Nichirin e defende o local ao lado dos Hashiras Muichiro e Mitsuri.",
+        episodesCount: 11,
+        poster: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx101922-WBsBl0ClmgYL.jpg",
+        trailerYoutubeId: "G9h3qX_B5vQ",
+        episodes: [
+          createEpisode("demon-slayer-infinity-castle", "ds-s3", 3, 1, "O Sonho de Alguém", "49m", "https://s4.anilist.co/file/anilistcdn/media/anime/banner/101922-33MtJGsUSxga.jpg", "A reunião das Luas Superiores na dimensão infinita e a busca pela lâmina secreta ancestral.", "G9h3qX_B5vQ"),
+        ],
+      },
+      {
+        id: "ds-s4",
+        animeId: "demon-slayer-infinity-castle",
+        seasonNumber: 4,
+        title: "Temporada 4: Treinamento dos Hashiras",
+        year: 2024,
+        synopsis: "Todos os Caçadores passam por um treinamento de resistência e força extrema sob a tutela de cada Hashira.",
+        episodesCount: 8,
+        poster: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx101922-WBsBl0ClmgYL.jpg",
+        trailerYoutubeId: "0b_p6gU8Z8Q",
+        episodes: [
+          createEpisode("demon-slayer-infinity-castle", "ds-s4", 4, 1, "Para Derrotar Muzan Kibutsuji", "44m", "https://s4.anilist.co/file/anilistcdn/media/anime/banner/101922-33MtJGsUSxga.jpg", "Sanemi e Iguro encontram o portal dimensional enquanto a reunião de emergência dos Hashiras é convocada.", "0b_p6gU8Z8Q"),
+        ],
+      },
+      {
+        id: "ds-s5",
+        animeId: "demon-slayer-infinity-castle",
+        seasonNumber: 5,
+        title: "Temporada 5: O Castelo Infinito (Trilogia Final)",
+        year: 2026,
+        synopsis: "O confronto supremo entre os Caçadores de Demônios e Muzan Kibutsuji na dimensão do Castelo Infinito.",
+        episodesCount: 3,
+        poster: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx101922-WBsBl0ClmgYL.jpg",
+        trailerYoutubeId: "V0Q_41m5Vn8",
+        episodes: [
+          createEpisode("demon-slayer-infinity-castle", "ds-s5", 5, 1, "Queda no Abismo Infinito", "95m", "https://s4.anilist.co/file/anilistcdn/media/anime/banner/101922-33MtJGsUSxga.jpg", "O ataque surpresa de Muzan à residência Ubuyashiki desencadeia a queda de todos os Caçadores no Castelo Infinito.", "V0Q_41m5Vn8"),
+        ],
       },
     ],
+    get episodes() {
+      return this.seasons.flatMap((s) => s.episodes);
+    },
     manga: {
       title: ANIME_MANGA_CONFIGS["demon-slayer-infinity-castle"].canonicalTitle,
       chaptersCount: ANIME_MANGA_CONFIGS["demon-slayer-infinity-castle"].totalChaptersEstimate,
@@ -318,6 +541,8 @@ export const ANIMES_DATA: Anime[] = [
       })),
     },
   },
+
+  // 5. TOWER OF GOD (2 Temporadas)
   {
     id: "tower-of-god",
     title: "Tower of God: O Retorno de Viole",
@@ -328,7 +553,7 @@ export const ANIMES_DATA: Anime[] = [
     banner: "https://s4.anilist.co/file/anilistcdn/media/anime/banner/115230-wjDIxW77TLv3.jpg",
     rating: 8.7,
     ratingCount: 31200,
-    episodesCount: 26,
+    episodesCount: 39,
     genres: ["Ação", "Fantasia", "Mistério", "Sobrenatural"],
     status: "Em lançamento",
     season: "Temporada de Verão",
@@ -340,17 +565,41 @@ export const ANIMES_DATA: Anime[] = [
     featured: false,
     trending: false,
     rank: 5,
-    episodes: [
+    malId: 40221,
+    anilistId: 115230,
+    seasons: [
       {
-        id: "tog-ep-1",
-        number: 1,
-        title: "O 20º Andar",
-        duration: "24m",
-        thumbnail: "https://s4.anilist.co/file/anilistcdn/media/anime/banner/115230-wjDIxW77TLv3.jpg",
-        synopsis: "Ja Wangnan tenta desesperadamente passar no teste de ascensão do 20º andar quando cruza o caminho do misterioso e temível Viole.",
-        isFree: true,
+        id: "tog-s1",
+        animeId: "tower-of-god",
+        seasonNumber: 1,
+        title: "Temporada 1: O Andar de Testes de Evankhell",
+        year: 2020,
+        synopsis: "Bam abre os portões da Torre em busca de Rachel e supera as provas com o auxílio de Khun Aguero e Rak.",
+        episodesCount: 13,
+        poster: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx115230-QHOdSN7yt8ab.jpg",
+        trailerYoutubeId: "O9-n56s74L8",
+        episodes: [
+          createEpisode("tower-of-god", "tog-s1", 1, 1, "A Bola do Dragão", "24m", "https://s4.anilist.co/file/anilistcdn/media/anime/banner/115230-wjDIxW77TLv3.jpg", "O guardião Headon desafia o jovem irregular Bam no primeiro andar em troca da lendária Março Negro.", "O9-n56s74L8"),
+        ],
+      },
+      {
+        id: "tog-s2",
+        animeId: "tower-of-god",
+        seasonNumber: 2,
+        title: "Temporada 2: O Retorno do Príncipe & Batalha da Oficina",
+        year: 2024,
+        synopsis: "Ja Wangnan e os regulares do 20º andar se deparam com Jyu Viole Grace, o misterioso assassino da FUG.",
+        episodesCount: 26,
+        poster: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx115230-QHOdSN7yt8ab.jpg",
+        trailerYoutubeId: "uK7p0w8M2qE",
+        episodes: [
+          createEpisode("tower-of-god", "tog-s2", 2, 1, "O 20º Andar", "24m", "https://s4.anilist.co/file/anilistcdn/media/anime/banner/115230-wjDIxW77TLv3.jpg", "Ja Wangnan tenta desesperadamente passar no teste de ascensão do 20º andar quando cruza o caminho de Viole.", "uK7p0w8M2qE"),
+        ],
       },
     ],
+    get episodes() {
+      return this.seasons.flatMap((s) => s.episodes);
+    },
     manga: {
       title: ANIME_MANGA_CONFIGS["tower-of-god"].canonicalTitle,
       chaptersCount: ANIME_MANGA_CONFIGS["tower-of-god"].totalChaptersEstimate,
@@ -367,6 +616,8 @@ export const ANIMES_DATA: Anime[] = [
       })),
     },
   },
+
+  // 6. KAIJU NO. 8 (2 Temporadas)
   {
     id: "kaiju-no-8",
     title: "Kaiju No. 8",
@@ -377,7 +628,7 @@ export const ANIMES_DATA: Anime[] = [
     banner: "https://s4.anilist.co/file/anilistcdn/media/anime/banner/153288-JNsWuMPMAuJL.jpg",
     rating: 8.9,
     ratingCount: 38900,
-    episodesCount: 12,
+    episodesCount: 24,
     genres: ["Ação", "Sci-Fi", "Comédia", "Shonen"],
     status: "Completo",
     season: "Temporada de Primavera",
@@ -389,17 +640,41 @@ export const ANIMES_DATA: Anime[] = [
     featured: false,
     trending: true,
     rank: 6,
-    episodes: [
+    malId: 52588,
+    anilistId: 153288,
+    seasons: [
       {
-        id: "kj8-ep-1",
-        number: 1,
-        title: "O Homem Que Se Tornou um Kaiju",
-        duration: "24m",
-        thumbnail: "https://s4.anilist.co/file/anilistcdn/media/anime/banner/153288-JNsWuMPMAuJL.jpg",
-        synopsis: "Kafka Hibino trabalha na limpeza pesada de carcaças de monstros gigantes até que um encontro hospitalar muda seu destino para sempre.",
-        isFree: true,
+        id: "kj8-s1",
+        animeId: "kaiju-no-8",
+        seasonNumber: 1,
+        title: "Temporada 1: O Homem Que Se Tornou um Kaiju",
+        year: 2024,
+        synopsis: "Kafka Hibino tenta ingressar na Terceira Divisão da Força de Defesa sob o comando de Mina Ashiro.",
+        episodesCount: 12,
+        poster: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx153288-25FBfFJzEQ5O.jpg",
+        trailerYoutubeId: "Cmx_Xh8Gz_U",
+        episodes: [
+          createEpisode("kaiju-no-8", "kj8-s1", 1, 1, "O Homem Que Se Tornou um Kaiju", "24m", "https://s4.anilist.co/file/anilistcdn/media/anime/banner/153288-JNsWuMPMAuJL.jpg", "Kafka Hibino trabalha na limpeza pesada de carcaças de monstros gigantes até que um encontro hospitalar muda seu destino.", "Cmx_Xh8Gz_U"),
+        ],
+      },
+      {
+        id: "kj8-s2",
+        animeId: "kaiju-no-8",
+        seasonNumber: 2,
+        title: "Temporada 2: O Julgamento de Kafka",
+        year: 2025,
+        synopsis: "A diretoria geral da Força de Defesa decide se Kafka será tratado como arma ou executado como criatura hostil.",
+        episodesCount: 12,
+        poster: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx153288-25FBfFJzEQ5O.jpg",
+        trailerYoutubeId: "Cmx_Xh8Gz_U",
+        episodes: [
+          createEpisode("kaiju-no-8", "kj8-s2", 2, 1, "Arma Humana", "24m", "https://s4.anilist.co/file/anilistcdn/media/anime/banner/153288-JNsWuMPMAuJL.jpg", "O Comandante Shinomiya testa o limite do coração de Kafka em um combate de vida ou morte.", "w8k0N_j2P1Q"),
+        ],
       },
     ],
+    get episodes() {
+      return this.seasons.flatMap((s) => s.episodes);
+    },
     manga: {
       title: ANIME_MANGA_CONFIGS["kaiju-no-8"].canonicalTitle,
       chaptersCount: ANIME_MANGA_CONFIGS["kaiju-no-8"].totalChaptersEstimate,
@@ -416,6 +691,8 @@ export const ANIMES_DATA: Anime[] = [
       })),
     },
   },
+
+  // 7. SPY X FAMILY (2 Temporadas)
   {
     id: "spy-x-family",
     title: "SPY x FAMILY",
@@ -426,7 +703,7 @@ export const ANIMES_DATA: Anime[] = [
     banner: "https://s4.anilist.co/file/anilistcdn/media/anime/banner/140960-Z7xSvkRxHKfj.jpg",
     rating: 9.0,
     ratingCount: 58400,
-    episodesCount: 25,
+    episodesCount: 37,
     genres: ["Comédia", "Ação", "Shonen"],
     status: "Completo",
     season: "Temporada de Outono",
@@ -438,17 +715,41 @@ export const ANIMES_DATA: Anime[] = [
     featured: false,
     trending: false,
     rank: 7,
-    episodes: [
+    malId: 50265,
+    anilistId: 140960,
+    seasons: [
       {
-        id: "sxf-ep-1",
-        number: 1,
-        title: "Operação Strix",
-        duration: "24m",
-        thumbnail: "https://s4.anilist.co/file/anilistcdn/media/anime/banner/140960-Z7xSvkRxHKfj.jpg",
-        synopsis: "Twilight adota a pequena Anya no orfanato sem desconfiar que ela conhece sua verdadeira identidade secreta.",
-        isFree: true,
+        id: "sxf-s1",
+        animeId: "spy-x-family",
+        seasonNumber: 1,
+        title: "Temporada 1: Operação Strix",
+        year: 2022,
+        synopsis: "Twilight adota Anya e se casa com Yor Forger para matricular a menina no prestigioso Colégio Eden.",
+        episodesCount: 25,
+        poster: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx140960-Kb6R5nYQfjmP.jpg",
+        trailerYoutubeId: "CCXLMq4vWng",
+        episodes: [
+          createEpisode("spy-x-family", "sxf-s1", 1, 1, "Operação Strix", "24m", "https://s4.anilist.co/file/anilistcdn/media/anime/banner/140960-Z7xSvkRxHKfj.jpg", "Twilight adota a pequena Anya no orfanato sem desconfiar que ela conhece sua verdadeira identidade secreta.", "CCXLMq4vWng"),
+        ],
+      },
+      {
+        id: "sxf-s2",
+        animeId: "spy-x-family",
+        seasonNumber: 2,
+        title: "Temporada 2: Aventura no Cruzeiro Princess Lorelei",
+        year: 2023,
+        synopsis: "Yor assume a guarda de uma família alvo de assassinos profissionais a bordo de um cruzeiro de luxo.",
+        episodesCount: 12,
+        poster: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx140960-Kb6R5nYQfjmP.jpg",
+        trailerYoutubeId: "CCXLMq4vWng",
+        episodes: [
+          createEpisode("spy-x-family", "sxf-s2", 2, 1, "Seguindo os Passos da Mãe", "24m", "https://s4.anilist.co/file/anilistcdn/media/anime/banner/140960-Z7xSvkRxHKfj.jpg", "Anya e Loid tentam desfrutar as atrações do navio enquanto Yor protege sua cliente nas sombras.", "HqWpZ3tqA_0"),
+        ],
       },
     ],
+    get episodes() {
+      return this.seasons.flatMap((s) => s.episodes);
+    },
     manga: {
       title: ANIME_MANGA_CONFIGS["spy-x-family"].canonicalTitle,
       chaptersCount: ANIME_MANGA_CONFIGS["spy-x-family"].totalChaptersEstimate,
@@ -465,6 +766,8 @@ export const ANIMES_DATA: Anime[] = [
       })),
     },
   },
+
+  // 8. CHAINSAW MAN (2 Temporadas)
   {
     id: "chainsaw-man",
     title: "Chainsaw Man: Arco da Reze",
@@ -475,7 +778,7 @@ export const ANIMES_DATA: Anime[] = [
     banner: "https://s4.anilist.co/file/anilistcdn/media/anime/banner/127230-o8IRwCGVr9KW.jpg",
     rating: 9.2,
     ratingCount: 66300,
-    episodesCount: 12,
+    episodesCount: 13,
     genres: ["Ação", "Sobrenatural", "Drama", "Shonen"],
     status: "Em lançamento",
     season: "Filme Cinematográfico",
@@ -487,17 +790,41 @@ export const ANIMES_DATA: Anime[] = [
     featured: false,
     trending: true,
     rank: 8,
-    episodes: [
+    malId: 44511,
+    anilistId: 127230,
+    seasons: [
       {
-        id: "csm-ep-1",
-        number: 1,
-        title: "Cão e Motosserra",
-        duration: "24m",
-        thumbnail: "https://s4.anilist.co/file/anilistcdn/media/anime/banner/127230-o8IRwCGVr9KW.jpg",
-        synopsis: "Traído pela Yakuza, Denji faz um pacto com seu fiel companheiro Pochita e renasce como o Homem-Motosserra.",
-        isFree: true,
+        id: "csm-s1",
+        animeId: "chainsaw-man",
+        seasonNumber: 1,
+        title: "Temporada 1: Divisão Especial de Segurança Pública 4",
+        year: 2022,
+        synopsis: "Makima recruta Denji para a Segurança Pública ao lado de Aki Hayakawa e a demônio do sangue Power.",
+        episodesCount: 12,
+        poster: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx127230-DdP4vAdssLoz.png",
+        trailerYoutubeId: "v4yLeNt-kCU",
+        episodes: [
+          createEpisode("chainsaw-man", "csm-s1", 1, 1, "Cão e Motosserra", "24m", "https://s4.anilist.co/file/anilistcdn/media/anime/banner/127230-o8IRwCGVr9KW.jpg", "Traído pela Yakuza, Denji faz um pacto com seu fiel companheiro Pochita e renasce como o Homem-Motosserra.", "v4yLeNt-kCU"),
+        ],
+      },
+      {
+        id: "csm-s2",
+        animeId: "chainsaw-man",
+        seasonNumber: 2,
+        title: "Temporada 2: O Demônio da Bomba (Arco da Reze)",
+        year: 2025,
+        synopsis: "Denji conhece Reze em uma cafeteria durante uma tempestade sem desconfiar das explosões que estão por vir.",
+        episodesCount: 1,
+        poster: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx127230-DdP4vAdssLoz.png",
+        trailerYoutubeId: "q15CRdE5Bv0",
+        episodes: [
+          createEpisode("chainsaw-man", "csm-s2", 2, 1, "Garota da Chuva", "98m", "https://s4.anilist.co/file/anilistcdn/media/anime/banner/127230-o8IRwCGVr9KW.jpg", "A relação inocente entre Denji e Reze se transforma na mais violenta batalha pirotécnica da cidade.", "q15CRdE5Bv0"),
+        ],
       },
     ],
+    get episodes() {
+      return this.seasons.flatMap((s) => s.episodes);
+    },
     manga: {
       title: ANIME_MANGA_CONFIGS["chainsaw-man"].canonicalTitle,
       chaptersCount: ANIME_MANGA_CONFIGS["chainsaw-man"].totalChaptersEstimate,

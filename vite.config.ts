@@ -1491,8 +1491,8 @@ function officialWebtoonIntegrationPlugin(): Plugin {
   return {
     name: 'official-webtoon-integration',
     configureServer(server) {
-      // 1. Image Proxy for Naver / Webtoon Akamai CDN with Referer injection
-      server.middlewares.use('/api/proxy/webtoon-image', async (req, res) => {
+      // 1. Unified Image Proxy for Manga & Webtoon CDNs (Naver, Akamai, Readdetectiveconan, MangaPill, MangaDex)
+      const handleImageProxy = async (req: any, res: any) => {
         try {
           const urlObj = new URL(req.url || '', `http://${req.headers.host || 'localhost:3000'}`);
           const targetUrl = urlObj.searchParams.get('url');
@@ -1513,11 +1513,25 @@ function officialWebtoonIntegrationPlugin(): Plugin {
             return;
           }
 
+          const isMangaPillOrConan = targetUrl.includes('readdetectiveconan.com') || targetUrl.includes('mangapill.com');
+          const isWebtoon = targetUrl.includes('webtoons.com') || targetUrl.includes('pstatic.net') || targetUrl.includes('webtoon-phinf');
+          const isMangaDex = targetUrl.includes('mangadex.org');
+
+          const reqHeaders: Record<string, string> = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+          };
+
+          if (isMangaPillOrConan) {
+            reqHeaders['Referer'] = 'https://mangapill.com/';
+          } else if (isWebtoon) {
+            reqHeaders['Referer'] = 'https://www.webtoons.com/';
+          } else if (isMangaDex) {
+            reqHeaders['Referer'] = 'https://mangadex.org/';
+          }
+
           const upstreamRes = await fetch(targetUrl, {
-            headers: {
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-              'Referer': 'https://www.webtoons.com/',
-            },
+            headers: reqHeaders,
+            signal: AbortSignal.timeout(12000),
           });
 
           if (!upstreamRes.ok) {
@@ -1529,7 +1543,7 @@ function officialWebtoonIntegrationPlugin(): Plugin {
           const contentType = upstreamRes.headers.get('content-type') || 'image/jpeg';
           const buffer = Buffer.from(await upstreamRes.arrayBuffer());
 
-          if (imageCache.size > 800) {
+          if (imageCache.size > 1200) {
             const firstKey = imageCache.keys().next().value;
             if (firstKey) imageCache.delete(firstKey);
           }
@@ -1542,6 +1556,155 @@ function officialWebtoonIntegrationPlugin(): Plugin {
         } catch (err: any) {
           res.statusCode = 500;
           res.end(err?.message || 'Proxy error');
+        }
+      };
+
+      server.middlewares.use('/api/proxy/webtoon-image', handleImageProxy);
+      server.middlewares.use('/api/proxy/manga-image', handleImageProxy);
+
+      // Multi-Source Manga Chapters Catalog
+      const MANGA_PATH_MAP: Record<string, string> = {
+        'frieren-beyond-journeys-end': '/manga/5035/sousou-no-frieren',
+        'jujutsu-kaisen-culling-game': '/manga/2085/jujutsu-kaisen',
+        'demon-slayer-infinity-castle': '/manga/2285/kimetsu-no-yaiba',
+        'chainsaw-man': '/manga/723/chainsaw-man',
+        'spy-x-family': '/manga/4143/spy-x-family',
+        'kaiju-no-8': '/manga/5098/kaijuu-8-gou',
+      };
+
+      server.middlewares.use('/api/manga/chapters', async (req, res) => {
+        try {
+          const urlObj = new URL(req.url || '', `http://${req.headers.host || 'localhost:3000'}`);
+          const animeId = urlObj.searchParams.get('animeId') || '';
+          const customPath = urlObj.searchParams.get('mangaPath') || MANGA_PATH_MAP[animeId];
+
+          if (!customPath) {
+            res.statusCode = 400;
+            res.end(JSON.stringify({ error: `Nenhum caminho de mangá mapeado para o anime: ${animeId}` }));
+            return;
+          }
+
+          const cacheKey = `manga_chaps_${customPath}`;
+          const cached = chaptersCache.get(cacheKey);
+          if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify(cached.data));
+            return;
+          }
+
+          const upstreamRes = await fetch(`https://mangapill.com${customPath}`, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+            },
+            signal: AbortSignal.timeout(8000),
+          });
+
+          if (!upstreamRes.ok) {
+            res.statusCode = upstreamRes.status;
+            res.end(JSON.stringify({ error: `Upstream error ${upstreamRes.status}` }));
+            return;
+          }
+
+          const html = await upstreamRes.text();
+          const matches = [...html.matchAll(/href="(\/chapters\/[^"]+)"[^>]*>([^<]+)<\/a>/g)];
+
+          const chapters = matches.map((m) => {
+            const url = m[1];
+            const rawName = m[2].trim();
+            const numMatch = rawName.match(/Chapter\s+([\d.]+)/i);
+            const num = numMatch ? parseFloat(numMatch[1]) : 0;
+            return {
+              id: url.replace('/chapters/', '').replace(/\//g, '-'),
+              chapterUrl: url,
+              number: num,
+              title: rawName.replace(/^Chapter\s+/i, 'Capítulo '),
+              isFree: true,
+            };
+          });
+
+          // Sort ascending (Chapter 1, 2, 3...)
+          chapters.sort((a, b) => a.number - b.number);
+
+          const payload = { success: true, animeId, total: chapters.length, chapters };
+          chaptersCache.set(cacheKey, { data: payload, timestamp: Date.now() });
+
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify(payload));
+        } catch (err: any) {
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ error: err?.message || 'Error fetching manga chapters' }));
+        }
+      });
+
+      // Multi-Source Manga Pages Extraction
+      server.middlewares.use('/api/manga/pages', async (req, res) => {
+        try {
+          const urlObj = new URL(req.url || '', `http://${req.headers.host || 'localhost:3000'}`);
+          let chapterUrl = urlObj.searchParams.get('chapterUrl') || '';
+          const animeId = urlObj.searchParams.get('animeId') || '';
+          const chapterNum = parseFloat(urlObj.searchParams.get('chapterNumber') || '1');
+
+          // If chapterUrl is not given directly, resolve it via anime chapters
+          if (!chapterUrl && animeId && MANGA_PATH_MAP[animeId]) {
+            const path = MANGA_PATH_MAP[animeId];
+            const chapsRes = await fetch(`http://localhost:3000/api/manga/chapters?animeId=${animeId}`);
+            if (chapsRes.ok) {
+              const chapsData = await chapsRes.json();
+              const found = (chapsData.chapters || []).find((c: any) => c.number === chapterNum);
+              if (found?.chapterUrl) {
+                chapterUrl = found.chapterUrl;
+              }
+            }
+          }
+
+          if (!chapterUrl) {
+            res.statusCode = 400;
+            res.end(JSON.stringify({ error: 'Missing chapterUrl or valid animeId/chapterNumber' }));
+            return;
+          }
+
+          // Check memory cache
+          const cacheKey = `manga_pages_${chapterUrl}`;
+          const cached = pagesCache.get(cacheKey);
+          if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ success: true, count: cached.pages.length, pages: cached.pages, chapterUrl }));
+            return;
+          }
+
+          const fullTarget = chapterUrl.startsWith('http') ? chapterUrl : `https://mangapill.com${chapterUrl}`;
+          const upstreamRes = await fetch(fullTarget, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+            },
+            signal: AbortSignal.timeout(8000),
+          });
+
+          if (!upstreamRes.ok) {
+            res.statusCode = upstreamRes.status;
+            res.end(JSON.stringify({ error: `Upstream error ${upstreamRes.status}` }));
+            return;
+          }
+
+          const html = await upstreamRes.text();
+          const rawImgs = [...html.matchAll(/data-src="([^"]+)"/g)].map((m) => m[1]);
+          const proxiedPages = rawImgs.map((u) => `/api/proxy/manga-image?url=${encodeURIComponent(u)}`);
+
+          if (proxiedPages.length > 0) {
+            pagesCache.set(cacheKey, { pages: proxiedPages, timestamp: Date.now() });
+          }
+
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: true, count: proxiedPages.length, pages: proxiedPages, chapterUrl }));
+        } catch (err: any) {
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ error: err?.message || 'Error fetching manga pages' }));
         }
       });
 
